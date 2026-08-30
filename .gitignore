@@ -1,0 +1,25 @@
+# Raw SOLEXS data
+*.zip
+AL1_SLX_L1_*/
+
+# Large scientific data
+*.parquet
+*.npy
+
+# Generated plots
+*.png
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Virtual environments
+venv/
+.venv/
+
+# OS files
+.DS_Store
+Thumbs.db
