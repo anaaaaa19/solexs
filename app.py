@@ -231,6 +231,11 @@ with st.spinner("Loading data..."):
 if sub_df_ts.empty:
     mask_ts = (df_ts['date'] >= start_date) & (df_ts['date'] <= end_date)
     sub_df_ts = df_ts[mask_ts].reset_index(drop=True)
+else:
+    if not pd.api.types.is_datetime64_any_dtype(sub_df_ts['utc_time']):
+        sub_df_ts['utc_time'] = pd.to_datetime(sub_df_ts['utc_time'], utc=True)
+    sub_df_ts['date'] = sub_df_ts['utc_time'].dt.date
+    sub_df_ts['date_str'] = sub_df_ts['utc_time'].dt.strftime('%Y-%m-%d')
 
 # -----------------------------------------------------------------------------
 # Section: Overview
