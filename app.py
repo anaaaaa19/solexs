@@ -63,6 +63,14 @@ def load_counts_array(root_dir):
     return np.load(npy_path, mmap_mode='r')
 
 @st.cache_data
+def load_tstart_master(root_dir):
+    ts_path = os.path.join(root_dir, 'solexs_master_timeseries.parquet')
+    if os.path.exists(ts_path):
+        df_m = pd.read_parquet(ts_path, columns=['TSTART'])
+        return df_m['TSTART'].values
+    return None
+
+@st.cache_data
 def load_catalog_data(root_dir):
     cal_cat_path = os.path.join(root_dir, 'solexs_flare_candidate_catalog_calibrated.csv')
     raw_cat_path = os.path.join(root_dir, 'solexs_flare_candidate_catalog.csv')
@@ -166,6 +174,7 @@ st.markdown('<div class="sub-title">Aditya-L1 Solar Low Energy X-ray Spectromete
 pipeline_config = load_pipeline_config(ROOT_DIR)
 df_ts = load_timeseries_light(ROOT_DIR)
 counts_2d = load_counts_array(ROOT_DIR)
+tstart_master = load_tstart_master(ROOT_DIR)
 cat_df = load_catalog_data(ROOT_DIR)
 daily_df = load_daily_summary(ROOT_DIR)
 pred_df, model_meta = load_predictions_summary(ROOT_DIR)
@@ -392,23 +401,26 @@ elif section == "Light Curve":
 
     HARDNESS_SPLIT_CHANNEL = 170
 
-    if counts_2d is not None and not sub_df_ts.empty:
-        filtered_indices = (sub_df_ts.index.values * 10) if len(df_ts) < len(counts_2d) else sub_df_ts.index.values
-        filtered_indices = filtered_indices[filtered_indices < len(counts_2d)]
+    if counts_2d is not None and tstart_master is not None and not sub_df_ts.empty:
+        matched_indices = np.searchsorted(tstart_master, sub_df_ts['TSTART'].values)
+        valid_mask = (matched_indices < len(counts_2d)) & (tstart_master[np.clip(matched_indices, 0, len(tstart_master)-1)] == sub_df_ts['TSTART'].values)
+        matched_indices = matched_indices[valid_mask]
+        sub_ts_valid = sub_df_ts[valid_mask]
 
-        high_band = counts_2d[filtered_indices, HARDNESS_SPLIT_CHANNEL:].sum(axis=1)
-        low_band = counts_2d[filtered_indices, :HARDNESS_SPLIT_CHANNEL].sum(axis=1)
+        if not sub_ts_valid.empty:
+            high_band = counts_2d[matched_indices, HARDNESS_SPLIT_CHANNEL:].sum(axis=1)
+            low_band = counts_2d[matched_indices, :HARDNESS_SPLIT_CHANNEL].sum(axis=1)
 
-        with np.errstate(divide='ignore', invalid='ignore'):
-            hardness_ratio = np.where(low_band > 0, high_band / low_band, np.nan)
+            with np.errstate(divide='ignore', invalid='ignore'):
+                hardness_ratio = np.where(low_band > 0, high_band / low_band, np.nan)
 
-        fig_hr, ax_hr = plt.subplots(figsize=(14, 2.8))
-        ax_hr.plot(sub_df_ts['utc_time'], hardness_ratio, lw=0.4, color='darkorange')
-        ax_hr.set_xlabel("UTC Time")
-        ax_hr.set_ylabel(f"Ratio (ch {HARDNESS_SPLIT_CHANNEL}-339 / ch 0-{HARDNESS_SPLIT_CHANNEL-1})")
-        ax_hr.set_title("Spectral Hardness Ratio Over Time", fontsize=11)
-        st.pyplot(fig_hr)
-        plt.close(fig_hr)
+            fig_hr, ax_hr = plt.subplots(figsize=(14, 2.8))
+            ax_hr.plot(sub_ts_valid['utc_time'], hardness_ratio, lw=0.4, color='darkorange')
+            ax_hr.set_xlabel("UTC Time")
+            ax_hr.set_ylabel(f"Ratio (ch {HARDNESS_SPLIT_CHANNEL}-339 / ch 0-{HARDNESS_SPLIT_CHANNEL-1})")
+            ax_hr.set_title("Spectral Hardness Ratio Over Time", fontsize=11)
+            st.pyplot(fig_hr)
+            plt.close(fig_hr)
 
     # Experimental Detection Threshold
     st.markdown("---")
@@ -592,20 +604,22 @@ elif section == "Flare Event Explorer":
 elif section == "Energy Spectrogram":
     st.markdown('<div class="section-header">Energy Spectrogram Heatmap</div>', unsafe_allow_html=True)
     
-    if counts_2d is None:
+    if counts_2d is None or tstart_master is None:
         st.warning("Master counts array missing!")
     else:
-        sub_indices = (sub_df_ts.index.values * 10)
-        sub_indices = sub_indices[sub_indices < len(counts_2d)]
+        matched_indices = np.searchsorted(tstart_master, sub_df_ts['TSTART'].values)
+        valid_mask = (matched_indices < len(counts_2d)) & (tstart_master[np.clip(matched_indices, 0, len(tstart_master)-1)] == sub_df_ts['TSTART'].values)
+        matched_indices = matched_indices[valid_mask]
+        sub_ts_valid = sub_df_ts[valid_mask]
         
-        if len(sub_indices) == 0:
+        if len(matched_indices) == 0:
             st.info("No data in selected date range.")
         else:
-            stride = max(1, len(sub_indices) // 400)
-            sample_idx = sub_indices[::stride]
+            stride = max(1, len(matched_indices) // 400)
+            sample_idx = matched_indices[::stride]
+            sample_times = sub_ts_valid['utc_time'].iloc[::stride]
             
             spectrogram_matrix = counts_2d[sample_idx, :].T
-            sample_times = df_ts.loc[sample_idx // 10, 'utc_time']
             
             fig_spec = px.imshow(
                 np.log10(spectrogram_matrix + 1.0),
