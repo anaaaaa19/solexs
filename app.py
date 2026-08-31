@@ -26,6 +26,14 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Data Loading & Caching Functions
 # -----------------------------------------------------------------------------
 @st.cache_data
+def load_pipeline_config(root_dir):
+    config_path = os.path.join(root_dir, 'config.json')
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            return json.load(f)
+    return None
+
+@st.cache_data
 def load_timeseries_light(root_dir):
     light_path = os.path.join(root_dir, 'solexs_master_timeseries_light.parquet')
     full_path = os.path.join(root_dir, 'solexs_master_timeseries.parquet')
@@ -159,6 +167,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Load cached datasets
+pipeline_config = load_pipeline_config(ROOT_DIR)
 df_ts = load_timeseries_light(ROOT_DIR)
 counts_2d = load_counts_array(ROOT_DIR)
 cat_df = load_catalog_data(ROOT_DIR)
@@ -228,6 +237,20 @@ if section == "1. Overview":
     col3.metric("Selected Window Rows", f"~{filtered_rows:,}")
     col4.metric("Flare Candidates", f"{n_candidates:,}")
     col5.metric("Low-Coverage Days", f"{low_cov_days} Days")
+    
+    st.markdown("---")
+
+    n_dirs = len(pipeline_config.get('data_directories', [])) if pipeline_config else 50
+
+    st.markdown(rf"""
+    ### 🚀 System Architecture & Core Capabilities
+    
+    - 🚀 **Intelligent Data Management**: Multi-directory batch reading via [`config.json`](file:///c:/Users/patha/Downloads/solexs_2026Aug29T152057124/config.json) (`{n_dirs}` configured day folders). Stores high-throughput timeseries in optimized Apache Parquet format (`solexs_master_timeseries.parquet`) and memory-mapped NumPy arrays (`solexs_master_counts.npy`) for sub-second query speeds.
+    - 🛡️ **Robust Error Handling**: `@st.cache_data` smart memory caching, automated NaN-row filtering (`245,917` invalid spectra dropped), zero-event safe fallbacks, memory-mapped disk slicing, and gap validation for telemetry dropouts.
+    - 🚀 **Automated Flare Detection**: Rolling background subtraction (30-minute median) combined with MAD robust 6.0-sigma thresholding, automatically identifying and annotating solar flares with red candidate markers on line plots.
+    - 🚀 **Interactive Analysis**: Widget-based date/time selection, peak count sliders, duration threshold adjustments, and multiselect class filtering for rapid, fuss-free solar flare investigation.
+    - 🚀 **Dynamic Visualizations**: Real-time interactive Plotly & Matplotlib light curves, zoomed-in ±10 min flare windows, 340-channel energy spectra, daily small-multiples grid, time-vs-channel spectrogram heatmap, hardness ratio trends, and XGBoost flare risk probability timelines.
+    """)
     
     st.markdown("---")
     

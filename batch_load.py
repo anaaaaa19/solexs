@@ -1,17 +1,35 @@
-import os
-import sys
-import numpy as np
-import pandas as pd
-from astropy.io import fits
+import json
+
+def load_config(root_dir):
+    config_path = os.path.join(root_dir, 'config.json')
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            return json.load(f)
+    return None
 
 def find_sdd2_pi_files(root_dir):
-    """Find all SDD2 .pi files under root_dir, sorted chronologically by date in filename."""
+    """Find all SDD2 .pi files from configured directories or root_dir, sorted chronologically."""
+    config = load_config(root_dir)
+    search_dirs = [root_dir]
+    
+    if config and 'data_directories' in config:
+        configured_dirs = [
+            os.path.abspath(os.path.join(root_dir, d)) if not os.path.isabs(d) else d
+            for d in config['data_directories']
+        ]
+        search_dirs = [d for d in configured_dirs if os.path.exists(d)]
+        if not search_dirs:
+            search_dirs = [root_dir]
+            
     pi_files = []
-    for root, dirs, files in os.walk(root_dir):
-        for f in files:
-            if 'SDD2' in f and f.endswith('.pi'):
-                pi_files.append(os.path.join(root, f))
-    # Sorting by filename sorts by date (20260704 -> 20260827)
+    for s_dir in search_dirs:
+        for root, dirs, files in os.walk(s_dir):
+            for f in files:
+                if 'SDD2' in f and f.endswith('.pi'):
+                    pi_files.append(os.path.join(root, f))
+                    
+    # Remove duplicates and sort by filename chronologically
+    pi_files = list(set(pi_files))
     return sorted(pi_files, key=lambda x: os.path.basename(x))
 
 def run_batch_loading(root_dir):
