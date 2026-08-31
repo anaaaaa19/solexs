@@ -63,6 +63,11 @@ def load_catalog_data(root_dir):
     cat['end_time'] = pd.to_datetime(cat['end_time'], utc=True)
     cat['peak_time'] = pd.to_datetime(cat['peak_time'], utc=True)
     cat['date_str'] = cat['peak_time'].dt.strftime('%Y-%m-%d')
+    if 'estimated_class' not in cat.columns:
+        if 'emp_goes_class' in cat.columns:
+            cat['estimated_class'] = cat['emp_goes_class']
+        elif 'goes_class' in cat.columns:
+            cat['estimated_class'] = cat['goes_class']
     return cat
 
 @st.cache_data
@@ -296,6 +301,83 @@ elif section == "2. Light Curve":
     )
     st.plotly_chart(fig, use_container_width=True)
 
+    # -------------------------------------------------------------------------
+    # Subsection: Hardness Ratio Trend
+    # -------------------------------------------------------------------------
+    st.markdown("---")
+    st.subheader("Hardness Ratio Trend")
+
+    HARDNESS_SPLIT_CHANNEL = 170
+
+    if counts_2d is not None and not sub_df_ts.empty:
+        filtered_indices = (sub_df_ts.index.values * 10) if len(df_ts) < len(counts_2d) else sub_df_ts.index.values
+        filtered_indices = filtered_indices[filtered_indices < len(counts_2d)]
+
+        high_band = counts_2d[filtered_indices, HARDNESS_SPLIT_CHANNEL:].sum(axis=1)
+        low_band = counts_2d[filtered_indices, :HARDNESS_SPLIT_CHANNEL].sum(axis=1)
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            hardness_ratio = np.where(low_band > 0, high_band / low_band, np.nan)
+
+        fig_hr, ax_hr = plt.subplots(figsize=(14, 3))
+        ax_hr.plot(sub_df_ts['utc_time'], hardness_ratio, lw=0.4, color='darkorange')
+        ax_hr.set_xlabel("UTC Time")
+        ax_hr.set_ylabel(f"Hardness Ratio (ch {HARDNESS_SPLIT_CHANNEL}-339 / ch 0-{HARDNESS_SPLIT_CHANNEL-1})")
+        ax_hr.set_title("Spectral Hardness Ratio Over Time")
+        st.pyplot(fig_hr)
+        plt.close(fig_hr)
+
+        st.caption(
+            f"Hardness ratio = high-energy channel counts (channels {HARDNESS_SPLIT_CHANNEL}-339) "
+            f"divided by low-energy channel counts (channels 0-{HARDNESS_SPLIT_CHANNEL-1}). "
+            "Rising hardness ratio during a flare indicates spectral hardening, a real physical "
+            "flare signature. This split point is a reasonable default, not an instrument-calibrated boundary."
+        )
+
+    # -------------------------------------------------------------------------
+    # Subsection: Experimental Detection Threshold
+    # -------------------------------------------------------------------------
+    st.markdown("---")
+    st.subheader("Experimental: Adjustable Detection Threshold")
+    st.caption(
+        "This control recomputes flare-candidate flags LIVE for the currently "
+        "selected date range only, using the slider value below. It does NOT "
+        "change the official saved event catalog used in Section 4 or elsewhere "
+        "in this dashboard — it is for exploring detection sensitivity only."
+    )
+
+    experimental_threshold = st.slider(
+        "MAD threshold (experimental)",
+        min_value=2.0, max_value=10.0, value=6.0, step=0.5
+    )
+
+    if not sub_df_ts.empty:
+        window_seconds = 1800 if len(df_ts) > 1000000 else 180
+        med = sub_df_ts['total_counts'].rolling(window_seconds, center=True, min_periods=30).median()
+        abs_dev = (sub_df_ts['total_counts'] - med).abs()
+        mad = abs_dev.rolling(window_seconds, center=True, min_periods=30).median()
+        robust_sigma = mad * 1.4826
+        excess = sub_df_ts['total_counts'] - med
+        experimental_flags = excess > (experimental_threshold * robust_sigma)
+
+        fig_exp, ax_exp = plt.subplots(figsize=(14, 3))
+        ax_exp.plot(sub_df_ts['utc_time'], sub_df_ts['total_counts'], lw=0.4, color='steelblue', label='Counts')
+        ax_exp.plot(sub_df_ts['utc_time'], med, lw=0.8, color='orange', label='Background (recomputed)')
+        if experimental_flags.sum() > 0:
+            ax_exp.scatter(
+                sub_df_ts.loc[experimental_flags, 'utc_time'],
+                sub_df_ts.loc[experimental_flags, 'total_counts'],
+                color='red', s=10, label='Candidate at this threshold', zorder=5
+            )
+        ax_exp.set_xlabel("UTC Time")
+        ax_exp.set_ylabel("Counts/sec")
+        ax_exp.set_title(f"Experimental Detection Preview (threshold = {experimental_threshold})")
+        ax_exp.legend()
+        st.pyplot(fig_exp)
+        plt.close(fig_exp)
+
+        st.metric("Seconds flagged at this threshold (selected range only)", int(experimental_flags.sum()))
+
 # -----------------------------------------------------------------------------
 # Section 3: Per-Day Grid
 # -----------------------------------------------------------------------------
@@ -343,65 +425,103 @@ elif section == "4. Flare Event Explorer":
     if cat_df is None or cat_df.empty:
         st.warning("No flare candidate events available in catalog.")
     else:
-        cat_sub = cat_df[cat_df['date_str'].isin(sub_df_ts['date_str'].unique())].copy()
-        
-        st.subheader(f"Detected Candidate Events ({len(cat_sub)} Events in Selected Window)")
-        st.dataframe(
-            cat_sub.sort_values('peak_counts', ascending=False),
-            use_container_width=True
-        )
-        
-        st.markdown("---")
-        st.subheader("Event Diagnostic Inspection")
-        
-        event_list = cat_sub.sort_values('peak_counts', ascending=False)['event_id'].tolist()
-        if not event_list:
-            st.info("No events found in selected date window.")
+        events = cat_df.copy()
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            min_peak = st.slider(
+                "Minimum peak counts",
+                min_value=int(events['peak_counts'].min()),
+                max_value=int(events['peak_counts'].max()),
+                value=int(events['peak_counts'].min())
+            )
+
+        with col2:
+            min_duration = st.slider(
+                "Minimum duration (seconds)",
+                min_value=int(events['duration_sec'].min()),
+                max_value=int(events['duration_sec'].max()),
+                value=int(events['duration_sec'].min())
+            )
+
+        with col3:
+            if 'estimated_class' in events.columns:
+                class_options = sorted(events['estimated_class'].dropna().unique().tolist())
+                selected_classes = st.multiselect("Estimated class", options=class_options, default=class_options)
+            else:
+                selected_classes = None
+
+        filtered_events = events[
+            (events['peak_counts'] >= min_peak) &
+            (events['duration_sec'] >= min_duration)
+        ]
+        if selected_classes is not None:
+            filtered_events = filtered_events[filtered_events['estimated_class'].isin(selected_classes)]
+
+        cat_sub = filtered_events[filtered_events['date_str'].isin(sub_df_ts['date_str'].unique())].copy()
+
+        if cat_sub.empty:
+            st.info("No events match the current filters.")
         else:
-            selected_event_id = st.selectbox(
-                "Select Candidate Event ID:",
-                options=event_list,
-                format_func=lambda x: f"Event {x} | Peak: {cat_sub[cat_sub['event_id']==x]['peak_counts'].values[0]:,.0f} c/s | Date: {cat_sub[cat_sub['event_id']==x]['date_str'].values[0]}"
+            st.subheader(f"Detected Candidate Events ({len(cat_sub)} Events in Selected Window)")
+            st.dataframe(
+                cat_sub.sort_values('peak_counts', ascending=False),
+                use_container_width=True
             )
             
-            event_row = cat_sub[cat_sub['event_id'] == selected_event_id].iloc[0]
+            st.markdown("---")
+            st.subheader("Event Diagnostic Inspection")
             
-            # Calibration Caveat Notice
-            st.markdown('<div class="caveat-box">', unsafe_allow_html=True)
-            if 'emp_goes_class' in event_row and pd.notna(event_row['emp_goes_class']):
-                st.markdown(f"**Empirical GOES Class**: `{event_row['emp_goes_class']}` | **Estimated Physical Flux**: `{event_row['emp_flux_wm2']:.3e} W/m²`")
-                st.markdown("Calibration Caveat: Fitted using 7 empirical cross-matched GOES flare events (R² = 0.9918), NOT a first-principles instrument response matrix.")
+            event_list = cat_sub.sort_values('peak_counts', ascending=False)['event_id'].tolist()
+            if not event_list:
+                st.info("No events found in selected date window.")
             else:
-                st.markdown("**GOES Classification**: Not classified — insufficient GOES cross-calibration points.")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            pk_time = event_row['peak_time']
-            pk_counts = event_row['peak_counts']
-            
-            win_start = pk_time - pd.Timedelta(minutes=10)
-            win_end = pk_time + pd.Timedelta(minutes=10)
-            sub_zoom = df_ts[(df_ts['utc_time'] >= win_start) & (df_ts['utc_time'] <= win_end)]
-            
-            col_zoom, col_spec = st.columns(2)
-            
-            with col_zoom:
-                st.markdown(f"**Zoomed Light Curve (±10 min around {pk_time.strftime('%H:%M:%S UTC')})**")
-                fig_zoom = px.line(sub_zoom, x='utc_time', y='total_counts', title=f"Event {selected_event_id} Light Curve Window")
-                fig_zoom.add_vline(x=pk_time.timestamp()*1000, line_dash="dash", line_color="red", annotation_text=f"Peak: {pk_counts:,.0f} c/s")
-                st.plotly_chart(fig_zoom, use_container_width=True)
+                selected_event_id = st.selectbox(
+                    "Select Candidate Event ID:",
+                    options=event_list,
+                    format_func=lambda x: f"Event {x} | Peak: {cat_sub[cat_sub['event_id']==x]['peak_counts'].values[0]:,.0f} c/s | Date: {cat_sub[cat_sub['event_id']==x]['date_str'].values[0]}"
+                )
                 
-            with col_spec:
-                st.markdown("**340-Channel Energy Spectrum at Peak Second**")
-                pk_index = (df_ts['utc_time'] - pk_time).abs().idxmin() * 10
-                if counts_2d is not None and pk_index < len(counts_2d):
-                    peak_spec = counts_2d[pk_index]
-                    quiet_spec = np.nanmedian(counts_2d[::1000], axis=0)
+                event_row = cat_sub[cat_sub['event_id'] == selected_event_id].iloc[0]
+                
+                # Calibration Caveat Notice
+                st.markdown('<div class="caveat-box">', unsafe_allow_html=True)
+                if 'emp_goes_class' in event_row and pd.notna(event_row['emp_goes_class']):
+                    st.markdown(f"**Empirical GOES Class**: `{event_row['emp_goes_class']}` | **Estimated Physical Flux**: `{event_row['emp_flux_wm2']:.3e} W/m²`")
+                    st.markdown("Calibration Caveat: Fitted using 7 empirical cross-matched GOES flare events (R² = 0.9918), NOT a first-principles instrument response matrix.")
+                else:
+                    st.markdown("**GOES Classification**: Not classified — insufficient GOES cross-calibration points.")
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                pk_time = event_row['peak_time']
+                pk_counts = event_row['peak_counts']
+                
+                win_start = pk_time - pd.Timedelta(minutes=10)
+                win_end = pk_time + pd.Timedelta(minutes=10)
+                sub_zoom = df_ts[(df_ts['utc_time'] >= win_start) & (df_ts['utc_time'] <= win_end)]
+                
+                col_zoom, col_spec = st.columns(2)
+                
+                with col_zoom:
+                    st.markdown(f"**Zoomed Light Curve (±10 min around {pk_time.strftime('%H:%M:%S UTC')})**")
+                    fig_zoom = px.line(sub_zoom, x='utc_time', y='total_counts', title=f"Event {selected_event_id} Light Curve Window")
+                    fig_zoom.add_vline(x=pk_time.timestamp()*1000, line_dash="dash", line_color="red", annotation_text=f"Peak: {pk_counts:,.0f} c/s")
+                    st.plotly_chart(fig_zoom, use_container_width=True)
                     
-                    fig_spec = go.Figure()
-                    fig_spec.add_trace(go.Scatter(y=peak_spec, mode='lines', name='Peak Second Spectrum', line=dict(color='red')))
-                    fig_spec.add_trace(go.Scatter(y=quiet_spec, mode='lines', name='Dataset Quiet Median', line=dict(color='gray', dash='dot')))
-                    fig_spec.update_layout(xaxis_title="Energy Channel Index (0-339)", yaxis_title="Counts", template="plotly_white")
-                    st.plotly_chart(fig_spec, use_container_width=True)
+                with col_spec:
+                    st.markdown("**340-Channel Energy Spectrum at Peak Second**")
+                    pk_index = (df_ts['utc_time'] - pk_time).abs().idxmin()
+                    pk_index = (pk_index * 10) if len(df_ts) < len(counts_2d) else pk_index
+                    if counts_2d is not None and pk_index < len(counts_2d):
+                        peak_spec = counts_2d[pk_index]
+                        quiet_spec = np.nanmedian(counts_2d[::1000], axis=0)
+                        
+                        fig_spec = go.Figure()
+                        fig_spec.add_trace(go.Scatter(y=peak_spec, mode='lines', name='Peak Second Spectrum', line=dict(color='red')))
+                        fig_spec.add_trace(go.Scatter(y=quiet_spec, mode='lines', name='Dataset Quiet Median', line=dict(color='gray', dash='dot')))
+                        fig_spec.update_layout(xaxis_title="Energy Channel Index (0-339)", yaxis_title="Counts", template="plotly_white")
+                        st.plotly_chart(fig_spec, use_container_width=True)
 
 # -----------------------------------------------------------------------------
 # Section 5: Energy Spectrogram
