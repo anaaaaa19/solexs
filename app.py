@@ -21,7 +21,7 @@ from src.data.validate_dataset import validate_parquet_store
 
 # Set Streamlit page layout and title
 st.set_page_config(
-    page_title="SoLEXS Solar Flare Analysis & Forecasting Dashboard",
+    page_title="SoLEXS Data Explorer",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -30,7 +30,7 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 PARQUET_STORE_DIR = os.path.join(ROOT_DIR, "data", "parquet")
 
 # -----------------------------------------------------------------------------
-# Data Loading & Caching Functions
+# Data Loading Functions
 # -----------------------------------------------------------------------------
 @st.cache_data
 def load_pipeline_config(root_dir):
@@ -109,7 +109,6 @@ def load_predictions_summary(root_dir):
         
     return pred_df, meta
 
-# Helper: Downsample DataFrame to max_points for fast browser Plotly rendering
 def downsample_for_plotly(df, max_points=3000):
     if len(df) <= max_points:
         return df
@@ -117,61 +116,51 @@ def downsample_for_plotly(df, max_points=3000):
     return df.iloc[::stride].copy()
 
 # -----------------------------------------------------------------------------
-# Enterprise CSS Design System (No Emojis, Clean Orientation)
+# Minimal CSS Styling
 # -----------------------------------------------------------------------------
 st.markdown("""
 <style>
-    .header-banner {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 1.5rem 2rem;
-        border-radius: 8px;
-        color: #ffffff;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    .main-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 0.1rem;
     }
-    .header-title {
-        font-size: 2.0rem;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        margin-bottom: 0.3rem;
-        color: #f8fafc;
-    }
-    .header-subtitle {
-        font-size: 1.0rem;
-        color: #94a3b8;
-        font-weight: 400;
-    }
-    .caveat-box {
-        background-color: #fffbebf5;
-        border: 1px solid #fcd34d;
-        border-left: 4px solid #d97706;
-        padding: 1rem 1.2rem;
-        border-radius: 6px;
-        color: #92400e;
-        font-size: 0.95rem;
-        margin-bottom: 1.2rem;
+    .sub-title {
+        font-size: 0.88rem;
+        color: #64748b;
+        margin-bottom: 1.0rem;
     }
     .section-header {
-        font-size: 1.4rem;
-        font-weight: 700;
+        font-size: 1.2rem;
+        font-weight: 600;
         color: #1e293b;
-        margin-top: 0.5rem;
-        margin-bottom: 1rem;
-        border-bottom: 2px solid #e2e8f0;
-        padding-bottom: 0.4rem;
+        margin-top: 0.4rem;
+        margin-bottom: 0.8rem;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 0.3rem;
+    }
+    .meta-footer {
+        font-size: 0.82rem;
+        color: #64748b;
+        margin-top: 0.3rem;
+    }
+    .caveat-box {
+        font-size: 0.85rem;
+        color: #92400e;
+        background-color: #fffbeb;
+        border: 1px solid #fef3c7;
+        border-left: 3px solid #d97706;
+        padding: 0.6rem 0.8rem;
+        border-radius: 4px;
+        margin-bottom: 0.8rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# -----------------------------------------------------------------------------
-# Header & Navigation
-# -----------------------------------------------------------------------------
-st.markdown("""
-<div class="header-banner">
-    <div class="header-title">Aditya-L1 SoLEXS Solar Flare Analysis & Forecasting Console</div>
-    <div class="header-subtitle">Solar Low Energy X-ray Spectrometer (SDD2) Data Processing, Spectral Diagnostics & Predictive Pipeline</div>
-</div>
-""", unsafe_allow_html=True)
+# Header
+st.markdown('<div class="main-title">SoLEXS Data Explorer</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Aditya-L1 Solar Low Energy X-ray Spectrometer (SDD2) Scientific Console</div>', unsafe_allow_html=True)
 
 # Load cached datasets
 pipeline_config = load_pipeline_config(ROOT_DIR)
@@ -182,29 +171,29 @@ daily_df = load_daily_summary(ROOT_DIR)
 pred_df, model_meta = load_predictions_summary(ROOT_DIR)
 
 if df_ts is None:
-    st.error("Primary dataset solexs_master_timeseries.parquet not found! Please run batch_load.py first.")
+    st.error("Primary dataset solexs_master_timeseries.parquet not found!")
     st.stop()
 
-# Sidebar Controls
-st.sidebar.title("Navigation & Controls")
-
+# Sidebar Navigation
+st.sidebar.markdown("### Navigation")
 section = st.sidebar.radio(
-    "Select Analysis Section",
+    "Navigation",
     [
-        "1. Overview",
-        "2. Light Curve",
-        "3. Per-Day Grid",
-        "4. Flare Event Explorer",
-        "5. Energy Spectrogram",
-        "6. Daily Summary",
-        "7. Data Quality & Gaps",
-        "8. Predictive Analysis",
-        "9. Ground-Truth Cross-Check"
-    ]
+        "Overview",
+        "Light Curve",
+        "Per-Day Grid",
+        "Flare Event Explorer",
+        "Energy Spectrogram",
+        "Daily Summary",
+        "Data Quality & Gaps",
+        "Predictive Analysis",
+        "Ground-Truth Cross-Check"
+    ],
+    label_visibility="collapsed"
 )
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("Global Date Range Filter")
+st.sidebar.markdown("### Date Range")
 
 min_d = df_ts['date'].min()
 max_d = df_ts['date'].max()
@@ -213,7 +202,8 @@ date_range = st.sidebar.date_input(
     "Date Range Window",
     value=(min_d, max_d),
     min_value=min_d,
-    max_value=max_d
+    max_value=max_d,
+    label_visibility="collapsed"
 )
 
 if isinstance(date_range, tuple) and len(date_range) == 2:
@@ -221,80 +211,82 @@ if isinstance(date_range, tuple) and len(date_range) == 2:
 else:
     start_date, end_date = min_d, max_d
 
-# Apply date filter
-mask_ts = (df_ts['date'] >= start_date) & (df_ts['date'] <= end_date)
-sub_df_ts = df_ts[mask_ts].reset_index(drop=True)
+# Query Partitioned Parquet via DuckDB engine
+with st.spinner("Loading data..."):
+    sub_df_ts = query_data(
+        start_date, end_date,
+        columns=['TSTART', 'utc_time', 'TELAPSE', 'EXPOSURE', 'total_counts'],
+        parquet_dir=PARQUET_STORE_DIR
+    )
+
+if sub_df_ts.empty:
+    mask_ts = (df_ts['date'] >= start_date) & (df_ts['date'] <= end_date)
+    sub_df_ts = df_ts[mask_ts].reset_index(drop=True)
 
 # -----------------------------------------------------------------------------
-# Section 1: Overview
+# Section: Overview
 # -----------------------------------------------------------------------------
-if section == "1. Overview":
-    st.markdown('<div class="section-header">Executive Overview & Instrumentation Metrics</div>', unsafe_allow_html=True)
+if section == "Overview":
+    st.markdown('<div class="section-header">Overview & Detector Metrics</div>', unsafe_allow_html=True)
     
     total_rows = 4074083
-    filtered_rows = len(sub_df_ts) * 10
+    filtered_rows = len(sub_df_ts) * (10 if len(df_ts) < total_rows else 1)
     n_dates = df_ts['date_str'].nunique()
     
     n_candidates = len(cat_df) if cat_df is not None else 0
     low_cov_days = len(daily_df[daily_df['n_seconds'] < 75000]) if daily_df is not None else 0
     
     col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Total Dataset Rows", f"{total_rows:,}")
-    col2.metric("Observation Date Range", f"{n_dates} Days")
-    col3.metric("Selected Window Rows", f"~{filtered_rows:,}")
+    col1.metric("Total Rows", f"{total_rows:,}")
+    col2.metric("Date Span", f"{n_dates} Days")
+    col3.metric("Selected Range Rows", f"{len(sub_df_ts):,}")
     col4.metric("Flare Candidates", f"{n_candidates:,}")
     col5.metric("Low-Coverage Days", f"{low_cov_days} Days")
-    
-    st.markdown("---")
-
-    n_dirs = len(pipeline_config.get('data_directories', [])) if pipeline_config else 50
-
-    st.markdown(rf"""
-    ### 🚀 System Architecture & Core Capabilities
-    
-    - 🚀 **Intelligent Data Management**: Multi-directory batch reading via [`config.json`](file:///c:/Users/patha/Downloads/solexs_2026Aug29T152057124/config.json) (`{n_dirs}` configured day folders). Stores high-throughput timeseries in optimized Apache Parquet format (`solexs_master_timeseries.parquet`) and memory-mapped NumPy arrays (`solexs_master_counts.npy`) for sub-second query speeds.
-    - 🛡️ **Robust Error Handling**: `@st.cache_data` smart memory caching, automated NaN-row filtering (`245,917` invalid spectra dropped), zero-event safe fallbacks, memory-mapped disk slicing, and gap validation for telemetry dropouts.
-    - 🚀 **Automated Flare Detection**: Rolling background subtraction (30-minute median) combined with MAD robust 6.0-sigma thresholding, automatically identifying and annotating solar flares with red candidate markers on line plots.
-    - 🚀 **Interactive Analysis**: Widget-based date/time selection, peak count sliders, duration threshold adjustments, and multiselect class filtering for rapid, fuss-free solar flare investigation.
-    - 🚀 **Dynamic Visualizations**: Real-time interactive Plotly & Matplotlib light curves, zoomed-in ±10 min flare windows, 340-channel energy spectra, daily small-multiples grid, time-vs-channel spectrogram heatmap, hardness ratio trends, and XGBoost flare risk probability timelines.
-    """)
     
     st.markdown("---")
     
     col_a, col_b = st.columns(2)
     with col_a:
-        st.markdown("""
-        ### Satellite & Detector Specifications
-        - **Instrument**: SoLEXS SDD2 (Solar Low Energy X-ray Spectrometer)
+        st.markdown(f"""
+        **Instrument Specifications**
+        - **Detector**: SoLEXS SDD2 (Solar Low Energy X-ray Spectrometer)
         - **Mission**: Aditya-L1 (ISRO)
-        - **Energy Channels**: 340 Channels (1.0 keV – 30.0 keV)
+        - **Channels**: 340 Energy Channels (1.0 keV – 30.0 keV)
         - **Temporal Resolution**: 1.0 Second Cadence
-        - **Observation Date Window**: `{}` to `{}`
-        """.format(min_d, max_d))
+        - **Date Range**: `{min_d}` to `{max_d}`
+        """)
     with col_b:
-        st.markdown("""
-        ### Pipeline Quality & Telemetry Summary
-        - **All-NaN Rows Dropped**: `245,917` rows
-        - **Valid Measured Spectra**: `{:,}` rows
-        - **Mean Measured Count Rate**: `{:.2f}` counts/s
-        - **Peak Measured Count Rate**: `{:,.0f}` counts/s
-        """.format(total_rows, df_ts['total_counts'].mean(), df_ts['total_counts'].max()))
+        st.markdown(f"""
+        **Data Processing Summary**
+        - **Dropped NaN Rows**: `245,917` rows
+        - **Valid Measured Spectra**: `{total_rows:,}` rows
+        - **Mean Count Rate**: `{df_ts['total_counts'].mean():.2f}` counts/s
+        - **Peak Count Rate**: `{df_ts['total_counts'].max():,.0f}` counts/s
+        """)
+
+    with st.expander("System Architecture & Technical Diagnostics"):
+        n_dirs = len(pipeline_config.get('data_directories', [])) if pipeline_config else 50
+        st.markdown(f"""
+        - **Data Management**: Partitioned Parquet (`data/parquet/date=YYYY-MM-DD/data.parquet`) with DuckDB query pushdown (`{n_dirs}` configured folders).
+        - **Memory Optimization**: Memory-mapped arrays (`solexs_master_counts.npy`, `mmap_mode='r'`) and Streamlit `@st.cache_data`.
+        - **Detection Engine**: 30-minute rolling median background subtraction with MAD 6.0-sigma thresholding.
+        - **Visualization**: WebGL-accelerated Plotly `Scattergl` rendering for zero-downsampling interactivity.
+        """)
         
-    st.markdown("### Selected Window Timeseries Data Preview")
+    st.markdown("### Selected Window Preview")
     st.dataframe(sub_df_ts[['TSTART', 'utc_time', 'TELAPSE', 'EXPOSURE', 'total_counts']].head(100), use_container_width=True)
 
 # -----------------------------------------------------------------------------
-# Section 2: Light Curve
+# Section: Light Curve
 # -----------------------------------------------------------------------------
-elif section == "2. Light Curve":
-    st.markdown('<div class="section-header">Interactive Multi-Day X-ray Light Curve (Full-Resolution WebGL)</div>', unsafe_allow_html=True)
+elif section == "Light Curve":
+    st.markdown('<div class="section-header">X-ray Light Curve</div>', unsafe_allow_html=True)
     
     col_ctrl1, col_ctrl2, col_ctrl3 = st.columns(3)
-    show_bg = col_ctrl1.checkbox("Overlay Rolling Background (30m Median)", value=True)
-    show_cand = col_ctrl2.checkbox("Overlay Flare Candidate Markers", value=True)
-    y_mode = col_ctrl3.radio("Y-Axis Count Metric", ["Raw total_counts", "Background-subtracted excess"])
+    show_bg = col_ctrl1.checkbox("Overlay Background (30m Median)", value=True)
+    show_cand = col_ctrl2.checkbox("Overlay Flare Candidates", value=True)
+    y_mode = col_ctrl3.radio("Metric", ["Raw total_counts", "Background-subtracted excess"], horizontal=True)
     
-    # Compute background & candidate flags if needed
     if 'background' not in sub_df_ts.columns and not sub_df_ts.empty:
         window_pts = max(30, min(1800, len(sub_df_ts)))
         sub_df_ts['background'] = sub_df_ts['total_counts'].rolling(window_pts, center=True, min_periods=30).median()
@@ -304,19 +296,19 @@ elif section == "2. Light Curve":
         sub_df_ts['is_candidate'] = (sub_df_ts['total_counts'] - sub_df_ts['background']) > (6.0 * mad * 1.4826)
 
     y_col = 'total_counts' if y_mode == "Raw total_counts" else 'excess'
-    plot_df = sub_df_ts  # FULL RESOLUTION (No downsampling!)
+    plot_df = sub_df_ts
         
     fig = go.Figure()
     fig.add_trace(go.Scattergl(
         x=plot_df['utc_time'], y=plot_df[y_col],
-        mode='lines', name='Measured Count Rate',
+        mode='lines', name='Count Rate',
         line=dict(color='#1f77b4', width=1.0), opacity=0.85
     ))
     
     if show_bg and 'background' in plot_df.columns and y_mode == "Raw total_counts":
         fig.add_trace(go.Scattergl(
             x=plot_df['utc_time'], y=plot_df['background'],
-            mode='lines', name='30m Median Background',
+            mode='lines', name='30m Background',
             line=dict(color='#ff7f0e', width=1.5)
         ))
         
@@ -325,26 +317,24 @@ elif section == "2. Light Curve":
         if not cand_sub.empty:
             fig.add_trace(go.Scattergl(
                 x=cand_sub['utc_time'], y=cand_sub[y_col],
-                mode='markers', name='Flare Candidate Second',
+                mode='markers', name='Candidate Marker',
                 marker=dict(color='#d62728', size=4)
             ))
             
     fig.update_layout(
-        title=f"SoLEXS SDD2 X-ray Light Curve ({start_date} to {end_date})",
-        xaxis_title="UTC Timestamp",
+        title=f"SoLEXS SDD2 Light Curve ({start_date} to {end_date})",
+        xaxis_title="UTC Time",
         yaxis_title="Counts / sec" if y_mode == "Raw total_counts" else "Excess Counts / sec",
         hovermode="x unified",
         template="plotly_white",
         height=500
     )
     st.plotly_chart(fig, use_container_width=True)
-    st.caption(f"⚡ Full-resolution WebGL rendering ({len(plot_df):,} records loaded directly via DuckDB partition pruning).")
+    st.markdown(f'<div class="meta-footer">{len(plot_df):,} points  |  {start_date} to {end_date}  |  Full resolution (DuckDB)</div>', unsafe_allow_html=True)
 
-    # -------------------------------------------------------------------------
-    # Subsection: Hardness Ratio Trend
-    # -------------------------------------------------------------------------
+    # Hardness Ratio Trend
     st.markdown("---")
-    st.subheader("Hardness Ratio Trend")
+    st.markdown('<div class="section-header">Hardness Ratio Trend</div>', unsafe_allow_html=True)
 
     HARDNESS_SPLIT_CHANNEL = 170
 
@@ -358,35 +348,20 @@ elif section == "2. Light Curve":
         with np.errstate(divide='ignore', invalid='ignore'):
             hardness_ratio = np.where(low_band > 0, high_band / low_band, np.nan)
 
-        fig_hr, ax_hr = plt.subplots(figsize=(14, 3))
+        fig_hr, ax_hr = plt.subplots(figsize=(14, 2.8))
         ax_hr.plot(sub_df_ts['utc_time'], hardness_ratio, lw=0.4, color='darkorange')
         ax_hr.set_xlabel("UTC Time")
-        ax_hr.set_ylabel(f"Hardness Ratio (ch {HARDNESS_SPLIT_CHANNEL}-339 / ch 0-{HARDNESS_SPLIT_CHANNEL-1})")
-        ax_hr.set_title("Spectral Hardness Ratio Over Time")
+        ax_hr.set_ylabel(f"Ratio (ch {HARDNESS_SPLIT_CHANNEL}-339 / ch 0-{HARDNESS_SPLIT_CHANNEL-1})")
+        ax_hr.set_title("Spectral Hardness Ratio Over Time", fontsize=11)
         st.pyplot(fig_hr)
         plt.close(fig_hr)
 
-        st.caption(
-            f"Hardness ratio = high-energy channel counts (channels {HARDNESS_SPLIT_CHANNEL}-339) "
-            f"divided by low-energy channel counts (channels 0-{HARDNESS_SPLIT_CHANNEL-1}). "
-            "Rising hardness ratio during a flare indicates spectral hardening, a real physical "
-            "flare signature. This split point is a reasonable default, not an instrument-calibrated boundary."
-        )
-
-    # -------------------------------------------------------------------------
-    # Subsection: Experimental Detection Threshold
-    # -------------------------------------------------------------------------
+    # Experimental Detection Threshold
     st.markdown("---")
-    st.subheader("Experimental: Adjustable Detection Threshold")
-    st.caption(
-        "This control recomputes flare-candidate flags LIVE for the currently "
-        "selected date range only, using the slider value below. It does NOT "
-        "change the official saved event catalog used in Section 4 or elsewhere "
-        "in this dashboard — it is for exploring detection sensitivity only."
-    )
+    st.markdown('<div class="section-header">Experimental Threshold Adjustment</div>', unsafe_allow_html=True)
 
     experimental_threshold = st.slider(
-        "MAD threshold (experimental)",
+        "MAD Threshold",
         min_value=2.0, max_value=10.0, value=6.0, step=0.5
     )
 
@@ -399,37 +374,36 @@ elif section == "2. Light Curve":
         excess = sub_df_ts['total_counts'] - med
         experimental_flags = excess > (experimental_threshold * robust_sigma)
 
-        fig_exp, ax_exp = plt.subplots(figsize=(14, 3))
+        fig_exp, ax_exp = plt.subplots(figsize=(14, 2.8))
         ax_exp.plot(sub_df_ts['utc_time'], sub_df_ts['total_counts'], lw=0.4, color='steelblue', label='Counts')
-        ax_exp.plot(sub_df_ts['utc_time'], med, lw=0.8, color='orange', label='Background (recomputed)')
+        ax_exp.plot(sub_df_ts['utc_time'], med, lw=0.8, color='orange', label='Background')
         if experimental_flags.sum() > 0:
             ax_exp.scatter(
                 sub_df_ts.loc[experimental_flags, 'utc_time'],
                 sub_df_ts.loc[experimental_flags, 'total_counts'],
-                color='red', s=10, label='Candidate at this threshold', zorder=5
+                color='red', s=10, label='Flagged Candidate', zorder=5
             )
         ax_exp.set_xlabel("UTC Time")
         ax_exp.set_ylabel("Counts/sec")
-        ax_exp.set_title(f"Experimental Detection Preview (threshold = {experimental_threshold})")
+        ax_exp.set_title(f"Detection Preview (MAD Threshold = {experimental_threshold})", fontsize=11)
         ax_exp.legend()
         st.pyplot(fig_exp)
         plt.close(fig_exp)
 
-        st.metric("Seconds flagged at this threshold (selected range only)", int(experimental_flags.sum()))
+        st.markdown(f'<div class="meta-footer">Flagged Seconds: {int(experimental_flags.sum()):,}</div>', unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# Section 3: Per-Day Grid
+# Section: Per-Day Grid
 # -----------------------------------------------------------------------------
-elif section == "3. Per-Day Grid":
-    st.markdown('<div class="section-header">Small-Multiples Per-Day Light Curve Grid</div>', unsafe_allow_html=True)
+elif section == "Per-Day Grid":
+    st.markdown('<div class="section-header">Per-Day Light Curve Grid</div>', unsafe_allow_html=True)
     
     present_dates = sorted(sub_df_ts['date_str'].unique())
     num_dates = len(present_dates)
     
     if num_dates == 0:
-        st.warning("No dates present in selected window.")
+        st.warning("No data in selected date range.")
     else:
-        st.write(f"Displaying {num_dates} calendar date subplots (5-column grid layout):")
         cols = 5
         rows = math.ceil(num_dates / cols)
         
@@ -450,19 +424,19 @@ elif section == "3. Per-Day Grid":
         for idx in range(num_dates, len(axes)):
             fig.delaxes(axes[idx])
             
-        fig.suptitle("SoLEXS SDD2 — Daily Light Curve Subplots", fontsize=14, fontweight='bold', y=0.995)
+        fig.suptitle("Daily Light Curve Subplots", fontsize=13, fontweight='bold', y=0.995)
         plt.tight_layout(rect=[0, 0, 1, 0.99])
         st.pyplot(fig)
         plt.close(fig)
 
 # -----------------------------------------------------------------------------
-# Section 4: Flare Event Explorer
+# Section: Flare Event Explorer
 # -----------------------------------------------------------------------------
-elif section == "4. Flare Event Explorer":
-    st.markdown('<div class="section-header">Flare Candidate Event Catalog Explorer</div>', unsafe_allow_html=True)
+elif section == "Flare Event Explorer":
+    st.markdown('<div class="section-header">Flare Candidate Event Catalog</div>', unsafe_allow_html=True)
     
     if cat_df is None or cat_df.empty:
-        st.warning("No flare candidate events available in catalog.")
+        st.warning("No flare candidate catalog available.")
     else:
         events = cat_df.copy()
 
@@ -470,7 +444,7 @@ elif section == "4. Flare Event Explorer":
 
         with col1:
             min_peak = st.slider(
-                "Minimum peak counts",
+                "Minimum Peak Counts",
                 min_value=int(events['peak_counts'].min()),
                 max_value=int(events['peak_counts'].max()),
                 value=int(events['peak_counts'].min())
@@ -478,7 +452,7 @@ elif section == "4. Flare Event Explorer":
 
         with col2:
             min_duration = st.slider(
-                "Minimum duration (seconds)",
+                "Minimum Duration (sec)",
                 min_value=int(events['duration_sec'].min()),
                 max_value=int(events['duration_sec'].max()),
                 value=int(events['duration_sec'].min())
@@ -487,7 +461,7 @@ elif section == "4. Flare Event Explorer":
         with col3:
             if 'estimated_class' in events.columns:
                 class_options = sorted(events['estimated_class'].dropna().unique().tolist())
-                selected_classes = st.multiselect("Estimated class", options=class_options, default=class_options)
+                selected_classes = st.multiselect("Estimated Class", options=class_options, default=class_options)
             else:
                 selected_classes = None
 
@@ -501,36 +475,33 @@ elif section == "4. Flare Event Explorer":
         cat_sub = filtered_events[filtered_events['date_str'].isin(sub_df_ts['date_str'].unique())].copy()
 
         if cat_sub.empty:
-            st.info("No events match the current filters.")
+            st.info("No events match current filters.")
         else:
-            st.subheader(f"Detected Candidate Events ({len(cat_sub)} Events in Selected Window)")
             st.dataframe(
                 cat_sub.sort_values('peak_counts', ascending=False),
                 use_container_width=True
             )
             
             st.markdown("---")
-            st.subheader("Event Diagnostic Inspection")
+            st.markdown('<div class="section-header">Diagnostic Inspection</div>', unsafe_allow_html=True)
             
             event_list = cat_sub.sort_values('peak_counts', ascending=False)['event_id'].tolist()
             if not event_list:
-                st.info("No events found in selected date window.")
+                st.info("No events in selected date range.")
             else:
                 selected_event_id = st.selectbox(
-                    "Select Candidate Event ID:",
+                    "Event ID",
                     options=event_list,
                     format_func=lambda x: f"Event {x} | Peak: {cat_sub[cat_sub['event_id']==x]['peak_counts'].values[0]:,.0f} c/s | Date: {cat_sub[cat_sub['event_id']==x]['date_str'].values[0]}"
                 )
                 
                 event_row = cat_sub[cat_sub['event_id'] == selected_event_id].iloc[0]
                 
-                # Calibration Caveat Notice
                 st.markdown('<div class="caveat-box">', unsafe_allow_html=True)
                 if 'emp_goes_class' in event_row and pd.notna(event_row['emp_goes_class']):
-                    st.markdown(f"**Empirical GOES Class**: `{event_row['emp_goes_class']}` | **Estimated Physical Flux**: `{event_row['emp_flux_wm2']:.3e} W/m²`")
-                    st.markdown("Calibration Caveat: Fitted using 7 empirical cross-matched GOES flare events (R² = 0.9918), NOT a first-principles instrument response matrix.")
+                    st.markdown(f"**Empirical GOES Class**: `{event_row['emp_goes_class']}` | **Estimated Flux**: `{event_row['emp_flux_wm2']:.3e} W/m²`")
                 else:
-                    st.markdown("**GOES Classification**: Not classified — insufficient GOES cross-calibration points.")
+                    st.markdown("**GOES Classification**: Unclassified")
                 st.markdown('</div>', unsafe_allow_html=True)
                 
                 pk_time = event_row['peak_time']
@@ -543,13 +514,12 @@ elif section == "4. Flare Event Explorer":
                 col_zoom, col_spec = st.columns(2)
                 
                 with col_zoom:
-                    st.markdown(f"**Zoomed Light Curve (±10 min around {pk_time.strftime('%H:%M:%S UTC')})**")
-                    fig_zoom = px.line(sub_zoom, x='utc_time', y='total_counts', title=f"Event {selected_event_id} Light Curve Window")
-                    fig_zoom.add_vline(x=pk_time.timestamp()*1000, line_dash="dash", line_color="red", annotation_text=f"Peak: {pk_counts:,.0f} c/s")
+                    fig_zoom = px.line(sub_zoom, x='utc_time', y='total_counts', title=f"Event {selected_event_id} (±10 min)")
+                    fig_zoom.add_vline(x=pk_time.timestamp()*1000, line_dash="dash", line_color="red", annotation_text=f"Peak: {pk_counts:,.0f}")
+                    fig_zoom.update_layout(template="plotly_white", margin=dict(l=20, r=20, t=30, b=20))
                     st.plotly_chart(fig_zoom, use_container_width=True)
                     
                 with col_spec:
-                    st.markdown("**340-Channel Energy Spectrum at Peak Second**")
                     pk_index = (df_ts['utc_time'] - pk_time).abs().idxmin()
                     pk_index = (pk_index * 10) if len(df_ts) < len(counts_2d) else pk_index
                     if counts_2d is not None and pk_index < len(counts_2d):
@@ -557,19 +527,19 @@ elif section == "4. Flare Event Explorer":
                         quiet_spec = np.nanmedian(counts_2d[::1000], axis=0)
                         
                         fig_spec = go.Figure()
-                        fig_spec.add_trace(go.Scatter(y=peak_spec, mode='lines', name='Peak Second Spectrum', line=dict(color='red')))
-                        fig_spec.add_trace(go.Scatter(y=quiet_spec, mode='lines', name='Dataset Quiet Median', line=dict(color='gray', dash='dot')))
-                        fig_spec.update_layout(xaxis_title="Energy Channel Index (0-339)", yaxis_title="Counts", template="plotly_white")
+                        fig_spec.add_trace(go.Scatter(y=peak_spec, mode='lines', name='Peak Spectrum', line=dict(color='red')))
+                        fig_spec.add_trace(go.Scatter(y=quiet_spec, mode='lines', name='Quiet Median', line=dict(color='gray', dash='dot')))
+                        fig_spec.update_layout(title="340-Channel Spectrum at Peak", xaxis_title="Channel Index (0-339)", yaxis_title="Counts", template="plotly_white", margin=dict(l=20, r=20, t=30, b=20))
                         st.plotly_chart(fig_spec, use_container_width=True)
 
 # -----------------------------------------------------------------------------
-# Section 5: Energy Spectrogram
+# Section: Energy Spectrogram
 # -----------------------------------------------------------------------------
-elif section == "5. Energy Spectrogram":
-    st.markdown('<div class="section-header">Time-vs-Channel Energy Spectrogram Heatmap</div>', unsafe_allow_html=True)
+elif section == "Energy Spectrogram":
+    st.markdown('<div class="section-header">Energy Spectrogram Heatmap</div>', unsafe_allow_html=True)
     
     if counts_2d is None:
-        st.warning("Master counts array solexs_master_counts.npy missing!")
+        st.warning("Master counts array missing!")
     else:
         sub_indices = (sub_df_ts.index.values * 10)
         sub_indices = sub_indices[sub_indices < len(counts_2d)]
@@ -577,7 +547,6 @@ elif section == "5. Energy Spectrogram":
         if len(sub_indices) == 0:
             st.info("No data in selected date range.")
         else:
-            st.write("Generating 340-channel spectrogram heatmap...")
             stride = max(1, len(sub_indices) // 400)
             sample_idx = sub_indices[::stride]
             
@@ -586,50 +555,48 @@ elif section == "5. Energy Spectrogram":
             
             fig_spec = px.imshow(
                 np.log10(spectrogram_matrix + 1.0),
-                labels=dict(x="UTC Timestamp", y="Energy Channel Index (0-339)", color="log10(Counts)"),
+                labels=dict(x="UTC Time", y="Channel (0-339)", color="log10(Counts)"),
                 x=sample_times,
                 y=np.arange(340),
                 aspect="auto",
                 color_continuous_scale="Viridis"
             )
-            fig_spec.update_layout(title="SoLEXS 340-Channel Spectrogram Heatmap", height=500)
+            fig_spec.update_layout(title="340-Channel Spectrogram", height=500, margin=dict(l=20, r=20, t=30, b=20))
             st.plotly_chart(fig_spec, use_container_width=True)
 
 # -----------------------------------------------------------------------------
-# Section 6: Daily Summary
+# Section: Daily Summary
 # -----------------------------------------------------------------------------
-elif section == "6. Daily Summary":
-    st.markdown('<div class="section-header">Daily Summary Statistics & Coverage Flags</div>', unsafe_allow_html=True)
+elif section == "Daily Summary":
+    st.markdown('<div class="section-header">Daily Summary Statistics</div>', unsafe_allow_html=True)
     
     if daily_df is None:
-        st.warning("Daily summary file solexs_daily_summary.csv not found!")
+        st.warning("Daily summary file not found!")
     else:
         daily_sub = daily_df[daily_df['date_str'].isin(sub_df_ts['date_str'].unique())].copy()
-        
         daily_sub['Coverage Status'] = np.where(
             daily_sub['n_seconds'] < 75000,
             "Partial Coverage (< 75k rows)",
             "Full Coverage (~86.4k rows)"
         )
         
-        st.subheader("Daily Peak X-ray Activity Bar Chart")
         fig_bar = px.bar(
             daily_sub, x='date_str', y='max_counts',
             color='Coverage Status',
-            labels={'date_str': 'Calendar Date', 'max_counts': 'Peak Counts / sec'},
-            title="Daily Peak X-ray Activity (SoLEXS SDD2)"
+            labels={'date_str': 'Date', 'max_counts': 'Peak Counts / sec'},
+            title="Daily Peak X-ray Activity"
         )
+        fig_bar.update_layout(margin=dict(l=20, r=20, t=30, b=20))
         st.plotly_chart(fig_bar, use_container_width=True)
         
         st.markdown("---")
-        st.subheader("Daily Summary Statistics Table")
         st.dataframe(daily_sub, use_container_width=True)
 
 # -----------------------------------------------------------------------------
-# Section 7: Data Quality & Gaps
+# Section: Data Quality & Gaps
 # -----------------------------------------------------------------------------
-elif section == "7. Data Quality & Gaps":
-    st.markdown('<div class="section-header">Timeline Gap & Data Quality Breakdown</div>', unsafe_allow_html=True)
+elif section == "Data Quality & Gaps":
+    st.markdown('<div class="section-header">Data Quality & Gap Breakdown</div>', unsafe_allow_html=True)
     
     t_diff = df_ts['TSTART'].diff()
     gap_mask = t_diff > 60.0
@@ -644,45 +611,27 @@ elif section == "7. Data Quality & Gaps":
     gaps_sub = gaps_df[gaps_df['date_str'].isin(sub_df_ts['date_str'].unique())]
     
     col_g1, col_g2 = st.columns(2)
-    col_g1.metric("Timeline Gaps > 60s (Selected Window)", f"{len(gaps_sub):,}")
+    col_g1.metric("Timeline Gaps (>60s)", f"{len(gaps_sub):,}")
     
     min_date = df_ts['utc_time'].min().floor('D')
     max_date = df_ts['utc_time'].max().floor('D')
     all_possible = pd.date_range(min_date, max_date, freq='D').strftime('%Y-%m-%d').tolist()
     missing_dates = sorted(list(set(all_possible) - set(df_ts['date_str'].unique())))
     
-    col_g2.metric("Completely Missing Calendar Dates", f"{len(missing_dates)}")
+    col_g2.metric("Missing Calendar Dates", f"{len(missing_dates)}")
     
     st.markdown("---")
-    st.subheader("Dropout Pattern Classification")
-    
-    col_c1, col_c2 = st.columns(2)
-    with col_c1:
-        st.markdown("**1. Clean Missing Dates (Not Downloaded / Missing Batches):**")
-        st.write(missing_dates if missing_dates else "None")
-        
-    with col_c2:
-        if not gaps_df.empty:
-            gaps_per_date = gaps_df.groupby('date_str').size()
-            dense_dropouts = gaps_per_date[gaps_per_date >= 3].index.tolist()
-            st.markdown("**2. Densely-Clustered Small Gaps (Telemetry / Sensor Dropout):**")
-            st.write(dense_dropouts)
-            
-    st.markdown("---")
-    st.subheader("Detailed Gap Log Table")
     st.dataframe(gaps_sub, use_container_width=True)
 
 # -----------------------------------------------------------------------------
-# Section 8: Predictive Analysis
+# Section: Predictive Analysis
 # -----------------------------------------------------------------------------
-elif section == "8. Predictive Analysis":
-    st.markdown('<div class="section-header">XGBoost Flare Forecasting & Risk Timeline</div>', unsafe_allow_html=True)
+elif section == "Predictive Analysis":
+    st.markdown('<div class="section-header">XGBoost Flare Forecasting</div>', unsafe_allow_html=True)
     
     if pred_df is None or model_meta is None:
-        st.warning("Trained model predictions summary or metadata JSON missing! Run train_model.py first.")
+        st.warning("Trained model predictions or metadata missing!")
     else:
-        st.subheader("Model Configuration & Benchmark Metadata")
-        
         col_m1, col_m2, col_m3, col_m4, col_m5 = st.columns(5)
         col_m1.metric("Forecast Horizon", f"{model_meta.get('forecast_horizon_minutes', 15)} mins")
         col_m2.metric("Precision", f"{model_meta['evaluation_metrics']['precision']*100:.1f}%")
@@ -690,27 +639,20 @@ elif section == "8. Predictive Analysis":
         col_m4.metric("F1 Score", f"{model_meta['evaluation_metrics']['f1_score']:.4f}")
         col_m5.metric("Mean Lead Time", f"{model_meta['evaluation_metrics']['mean_lead_time_minutes']:.1f} mins")
         
-        st.markdown(f"""
-        - **Training Date Range**: `{model_meta['training_date_range']}`
-        - **Fixed Holdout Test Date Range**: `{model_meta['test_date_range']}`
-        - **False Alarm Rate**: `{model_meta['evaluation_metrics']['false_alarm_episodes_per_day']:.1f}` discrete false alarm episodes / day
-        """)
-        
         col_fig, col_pred = st.columns([1, 2])
         with col_fig:
-            st.markdown("**Top Feature Importance (Gain)**")
+            st.markdown("**Feature Importance (Gain)**")
             feat_img_path = os.path.join(ROOT_DIR, 'solexs_feature_importance.png')
             if os.path.exists(feat_img_path):
                 st.image(feat_img_path)
                 
         with col_pred:
-            st.markdown("**15-Minute Imminent Flare Risk Probability Timeline**")
             sub_pred = pred_df[(pred_df['date'] >= start_date) & (pred_df['date'] <= end_date)].copy()
             
             if sub_pred.empty:
-                st.info("No prediction data in selected date range.")
+                st.info("No prediction data in range.")
             else:
-                plot_pred = sub_pred  # FULL RESOLUTION (No downsampling!)
+                plot_pred = sub_pred
                     
                 fig_risk = make_subplots(specs=[[{"secondary_y": True}]])
                 fig_risk.add_trace(
@@ -718,43 +660,34 @@ elif section == "8. Predictive Analysis":
                     secondary_y=False
                 )
                 fig_risk.add_trace(
-                    go.Scattergl(x=plot_pred['utc_time'], y=plot_pred['pred_prob'], name="Predicted Flare Risk (0-1)", line=dict(color='#d62728', width=1.5)),
+                    go.Scattergl(x=plot_pred['utc_time'], y=plot_pred['pred_prob'], name="Risk Prob", line=dict(color='#d62728', width=1.5)),
                     secondary_y=True
                 )
-                fig_risk.update_layout(title=f"Predicted Flare Risk ({start_date} to {end_date})", hovermode="x unified", template="plotly_white")
-                fig_risk.update_yaxes(title_text="Total Counts / sec", secondary_y=False)
-                fig_risk.update_yaxes(title_text="Predicted Flare Risk Probability", range=[0, 1], secondary_y=True)
+                fig_risk.update_layout(title=f"Predicted Risk Timeline ({start_date} to {end_date})", hovermode="x unified", template="plotly_white", margin=dict(l=20, r=20, t=30, b=20))
+                fig_risk.update_yaxes(title_text="Counts / sec", secondary_y=False)
+                fig_risk.update_yaxes(title_text="Probability", range=[0, 1], secondary_y=True)
                 st.plotly_chart(fig_risk, use_container_width=True)
-                st.caption(f"⚡ Full-resolution WebGL risk timeline ({len(plot_pred):,} records loaded).")
+                st.markdown(f'<div class="meta-footer">{len(plot_pred):,} records  |  Full resolution (WebGL)</div>', unsafe_allow_html=True)
                 
         st.markdown("---")
-        st.subheader("False Alarm & Missed Event Analysis")
-        
         col_fa, col_ms = st.columns(2)
         with col_fa:
-            st.markdown("**False Alarms (High Predicted Risk P > 0.5 without Imminent Flare):**")
+            st.markdown("**False Alarms (P > 0.5 without Event)**")
             fa_mask = sub_pred['valid_forecast_window'] & (sub_pred['pred_prob'] > 0.5) & (sub_pred['label_flare_imminent'] == 0)
             fa_df = sub_pred[fa_mask][['utc_time', 'total_counts', 'pred_prob']].head(100)
-            st.write(f"Total False Alarm Sample Seconds: {fa_mask.sum():,}")
             st.dataframe(fa_df, use_container_width=True)
             
         with col_ms:
-            st.markdown("**Misses (Actual Imminent Flare with P <= 0.5 Alert Risk):**")
+            st.markdown("**Missed Alerts (Actual Flare with P <= 0.5)**")
             ms_mask = sub_pred['valid_forecast_window'] & (sub_pred['pred_prob'] <= 0.5) & (sub_pred['label_flare_imminent'] == 1)
             ms_df = sub_pred[ms_mask][['utc_time', 'total_counts', 'pred_prob']].head(100)
-            st.write(f"Total Missed Flare Sample Seconds: {ms_mask.sum():,}")
             st.dataframe(ms_df, use_container_width=True)
 
 # -----------------------------------------------------------------------------
-# Section 9: Ground-Truth Cross-Check
+# Section: Ground-Truth Cross-Check
 # -----------------------------------------------------------------------------
-elif section == "9. Ground-Truth Cross-Check":
-    st.markdown('<div class="section-header">NOAA/GOES Ground-Truth Flare Cross-Match Table</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    **Cross-Match Verification**:
-    The following table details real NOAA/GOES satellite-reported solar flares cross-matched with detected SoLEXS peak candidate events within a ±5 minute window:
-    """)
+elif section == "Ground-Truth Cross-Check":
+    st.markdown('<div class="section-header">NOAA/GOES Ground-Truth Cross-Match</div>', unsafe_allow_html=True)
     
     matched_pairs = [
         {'event_id': 1, 'peak_time': '2026-07-04 22:05:59 UTC', 'solexs_counts': 367510.0, 'goes_flux_wm2': '1.30e-04', 'goes_class': 'X1.3', 'match_status': 'Matched'},
