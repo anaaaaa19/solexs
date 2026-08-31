@@ -296,41 +296,95 @@ elif section == "Light Curve":
         sub_df_ts['is_candidate'] = (sub_df_ts['total_counts'] - sub_df_ts['background']) > (6.0 * mad * 1.4826)
 
     y_col = 'total_counts' if y_mode == "Raw total_counts" else 'excess'
-    plot_df = sub_df_ts
-        
-    fig = go.Figure()
-    fig.add_trace(go.Scattergl(
-        x=plot_df['utc_time'], y=plot_df[y_col],
-        mode='lines', name='Count Rate',
-        line=dict(color='#1f77b4', width=1.0), opacity=0.85
-    ))
     
-    if show_bg and 'background' in plot_df.columns and y_mode == "Raw total_counts":
+    # Payload transport safety check: 500,000 points (~15MB JSON) per trace threshold
+    MAX_SINGLE_PLOT_POINTS = 500000
+
+    if len(sub_df_ts) <= MAX_SINGLE_PLOT_POINTS:
+        plot_df = sub_df_ts
+        fig = go.Figure()
         fig.add_trace(go.Scattergl(
-            x=plot_df['utc_time'], y=plot_df['background'],
-            mode='lines', name='30m Background',
-            line=dict(color='#ff7f0e', width=1.5)
+            x=plot_df['utc_time'], y=plot_df[y_col],
+            mode='lines', name='Count Rate',
+            line=dict(color='#1f77b4', width=1.0), opacity=0.85
         ))
         
-    if show_cand and 'is_candidate' in sub_df_ts.columns:
-        cand_sub = sub_df_ts[sub_df_ts['is_candidate']]
-        if not cand_sub.empty:
+        if show_bg and 'background' in plot_df.columns and y_mode == "Raw total_counts":
             fig.add_trace(go.Scattergl(
-                x=cand_sub['utc_time'], y=cand_sub[y_col],
-                mode='markers', name='Candidate Marker',
-                marker=dict(color='#d62728', size=4)
+                x=plot_df['utc_time'], y=plot_df['background'],
+                mode='lines', name='30m Background',
+                line=dict(color='#ff7f0e', width=1.5)
             ))
             
-    fig.update_layout(
-        title=f"SoLEXS SDD2 Light Curve ({start_date} to {end_date})",
-        xaxis_title="UTC Time",
-        yaxis_title="Counts / sec" if y_mode == "Raw total_counts" else "Excess Counts / sec",
-        hovermode="x unified",
-        template="plotly_white",
-        height=500
-    )
-    st.plotly_chart(fig, use_container_width=True)
-    st.markdown(f'<div class="meta-footer">{len(plot_df):,} points  |  {start_date} to {end_date}  |  Full resolution (DuckDB)</div>', unsafe_allow_html=True)
+        if show_cand and 'is_candidate' in sub_df_ts.columns:
+            cand_sub = sub_df_ts[sub_df_ts['is_candidate']]
+            if not cand_sub.empty:
+                fig.add_trace(go.Scattergl(
+                    x=cand_sub['utc_time'], y=cand_sub[y_col],
+                    mode='markers', name='Candidate Marker',
+                    marker=dict(color='#d62728', size=4)
+                ))
+                
+        fig.update_layout(
+            title=f"SoLEXS SDD2 Light Curve ({start_date} to {end_date})",
+            xaxis_title="UTC Time",
+            yaxis_title="Counts / sec" if y_mode == "Raw total_counts" else "Excess Counts / sec",
+            hovermode="x unified",
+            template="plotly_white",
+            height=500,
+            margin=dict(l=20, r=20, t=30, b=20)
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown(f'<div class="meta-footer">{len(plot_df):,} points  |  {start_date} to {end_date}  |  Full resolution (DuckDB)</div>', unsafe_allow_html=True)
+    else:
+        # Multi-day range > 500k points: Render Day Navigator for 100% full-resolution payload safety
+        available_dates = sorted(sub_df_ts['date_str'].unique()) if 'date_str' in sub_df_ts.columns else sorted(sub_df_ts['utc_time'].dt.strftime('%Y-%m-%d').unique())
+        
+        col_nav1, col_nav2 = st.columns([1, 3])
+        with col_nav1:
+            selected_day = st.selectbox("Inspect Date (100% Full Resolution)", available_dates)
+            
+        day_df = query_data(selected_day, selected_day, columns=['TSTART', 'utc_time', 'TELAPSE', 'EXPOSURE', 'total_counts'], parquet_dir=PARQUET_STORE_DIR)
+        
+        if 'background' not in day_df.columns and not day_df.empty:
+            window_pts = max(30, min(1800, len(day_df)))
+            day_df['background'] = day_df['total_counts'].rolling(window_pts, center=True, min_periods=30).median()
+            day_df['excess'] = day_df['total_counts'] - day_df['background']
+            abs_dev = (day_df['total_counts'] - day_df['background']).abs()
+            mad = abs_dev.rolling(window_pts, center=True, min_periods=30).median()
+            day_df['is_candidate'] = (day_df['total_counts'] - day_df['background']) > (6.0 * mad * 1.4826)
+
+        fig_day = go.Figure()
+        fig_day.add_trace(go.Scattergl(
+            x=day_df['utc_time'], y=day_df[y_col],
+            mode='lines', name='Count Rate',
+            line=dict(color='#1f77b4', width=1.0), opacity=0.85
+        ))
+        if show_bg and 'background' in day_df.columns and y_mode == "Raw total_counts":
+            fig_day.add_trace(go.Scattergl(
+                x=day_df['utc_time'], y=day_df['background'],
+                mode='lines', name='30m Background',
+                line=dict(color='#ff7f0e', width=1.5)
+            ))
+        if show_cand and 'is_candidate' in day_df.columns:
+            cand_day = day_df[day_df['is_candidate']]
+            if not cand_day.empty:
+                fig_day.add_trace(go.Scattergl(
+                    x=cand_day['utc_time'], y=cand_day[y_col],
+                    mode='markers', name='Candidate Marker',
+                    marker=dict(color='#d62728', size=4)
+                ))
+        fig_day.update_layout(
+            title=f"SoLEXS SDD2 Full Resolution — {selected_day}",
+            xaxis_title="UTC Time",
+            yaxis_title="Counts / sec" if y_mode == "Raw total_counts" else "Excess Counts / sec",
+            hovermode="x unified",
+            template="plotly_white",
+            height=500,
+            margin=dict(l=20, r=20, t=30, b=20)
+        )
+        st.plotly_chart(fig_day, use_container_width=True)
+        st.markdown(f'<div class="meta-footer">{len(day_df):,} points  |  {selected_day}  |  Full resolution (Selected Date)  |  Range Total: {len(sub_df_ts):,} points across {len(available_dates)} days</div>', unsafe_allow_html=True)
 
     # Hardness Ratio Trend
     st.markdown("---")
@@ -651,9 +705,8 @@ elif section == "Predictive Analysis":
             
             if sub_pred.empty:
                 st.info("No prediction data in range.")
-            else:
+            elif len(sub_pred) <= 500000:
                 plot_pred = sub_pred
-                    
                 fig_risk = make_subplots(specs=[[{"secondary_y": True}]])
                 fig_risk.add_trace(
                     go.Scattergl(x=plot_pred['utc_time'], y=plot_pred['total_counts'], name="Counts/s", line=dict(color='#1f77b4', width=0.8)),
@@ -668,6 +721,25 @@ elif section == "Predictive Analysis":
                 fig_risk.update_yaxes(title_text="Probability", range=[0, 1], secondary_y=True)
                 st.plotly_chart(fig_risk, use_container_width=True)
                 st.markdown(f'<div class="meta-footer">{len(plot_pred):,} records  |  Full resolution (WebGL)</div>', unsafe_allow_html=True)
+            else:
+                pred_dates = sorted(sub_pred['date'].astype(str).unique())
+                sel_pred_date = st.selectbox("Select Prediction Date to Inspect (100% Full Resolution)", pred_dates)
+                day_pred = sub_pred[sub_pred['date'].astype(str) == sel_pred_date]
+                
+                fig_risk = make_subplots(specs=[[{"secondary_y": True}]])
+                fig_risk.add_trace(
+                    go.Scattergl(x=day_pred['utc_time'], y=day_pred['total_counts'], name="Counts/s", line=dict(color='#1f77b4', width=0.8)),
+                    secondary_y=False
+                )
+                fig_risk.add_trace(
+                    go.Scattergl(x=day_pred['utc_time'], y=day_pred['pred_prob'], name="Risk Prob", line=dict(color='#d62728', width=1.5)),
+                    secondary_y=True
+                )
+                fig_risk.update_layout(title=f"Predicted Risk Timeline — {sel_pred_date}", hovermode="x unified", template="plotly_white", margin=dict(l=20, r=20, t=30, b=20))
+                fig_risk.update_yaxes(title_text="Counts / sec", secondary_y=False)
+                fig_risk.update_yaxes(title_text="Probability", range=[0, 1], secondary_y=True)
+                st.plotly_chart(fig_risk, use_container_width=True)
+                st.markdown(f'<div class="meta-footer">{len(day_pred):,} records  |  {sel_pred_date}  |  Full resolution (Selected Date)  |  Range Total: {len(sub_pred):,} records</div>', unsafe_allow_html=True)
                 
         st.markdown("---")
         col_fa, col_ms = st.columns(2)
