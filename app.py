@@ -13,6 +13,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+# Add src to sys.path if not present
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
+from src.data.parquet_store import query_data, get_duckdb_connection
+from src.data.validate_dataset import validate_parquet_store
+
 # Set Streamlit page layout and title
 st.set_page_config(
     page_title="SoLEXS Solar Flare Analysis & Forecasting Dashboard",
@@ -21,6 +27,7 @@ st.set_page_config(
 )
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+PARQUET_STORE_DIR = os.path.join(ROOT_DIR, "data", "parquet")
 
 # -----------------------------------------------------------------------------
 # Data Loading & Caching Functions
@@ -280,25 +287,34 @@ if section == "1. Overview":
 # Section 2: Light Curve
 # -----------------------------------------------------------------------------
 elif section == "2. Light Curve":
-    st.markdown('<div class="section-header">Interactive Multi-Day X-ray Light Curve</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Interactive Multi-Day X-ray Light Curve (Full-Resolution WebGL)</div>', unsafe_allow_html=True)
     
     col_ctrl1, col_ctrl2, col_ctrl3 = st.columns(3)
     show_bg = col_ctrl1.checkbox("Overlay Rolling Background (30m Median)", value=True)
     show_cand = col_ctrl2.checkbox("Overlay Flare Candidate Markers", value=True)
     y_mode = col_ctrl3.radio("Y-Axis Count Metric", ["Raw total_counts", "Background-subtracted excess"])
     
+    # Compute background & candidate flags if needed
+    if 'background' not in sub_df_ts.columns and not sub_df_ts.empty:
+        window_pts = max(30, min(1800, len(sub_df_ts)))
+        sub_df_ts['background'] = sub_df_ts['total_counts'].rolling(window_pts, center=True, min_periods=30).median()
+        sub_df_ts['excess'] = sub_df_ts['total_counts'] - sub_df_ts['background']
+        abs_dev = (sub_df_ts['total_counts'] - sub_df_ts['background']).abs()
+        mad = abs_dev.rolling(window_pts, center=True, min_periods=30).median()
+        sub_df_ts['is_candidate'] = (sub_df_ts['total_counts'] - sub_df_ts['background']) > (6.0 * mad * 1.4826)
+
     y_col = 'total_counts' if y_mode == "Raw total_counts" else 'excess'
-    plot_df = downsample_for_plotly(sub_df_ts, max_points=3000)
+    plot_df = sub_df_ts  # FULL RESOLUTION (No downsampling!)
         
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
+    fig.add_trace(go.Scattergl(
         x=plot_df['utc_time'], y=plot_df[y_col],
         mode='lines', name='Measured Count Rate',
         line=dict(color='#1f77b4', width=1.0), opacity=0.85
     ))
     
     if show_bg and 'background' in plot_df.columns and y_mode == "Raw total_counts":
-        fig.add_trace(go.Scatter(
+        fig.add_trace(go.Scattergl(
             x=plot_df['utc_time'], y=plot_df['background'],
             mode='lines', name='30m Median Background',
             line=dict(color='#ff7f0e', width=1.5)
@@ -307,9 +323,8 @@ elif section == "2. Light Curve":
     if show_cand and 'is_candidate' in sub_df_ts.columns:
         cand_sub = sub_df_ts[sub_df_ts['is_candidate']]
         if not cand_sub.empty:
-            cand_plot = downsample_for_plotly(cand_sub, max_points=1000)
-            fig.add_trace(go.Scatter(
-                x=cand_plot['utc_time'], y=cand_plot[y_col],
+            fig.add_trace(go.Scattergl(
+                x=cand_sub['utc_time'], y=cand_sub[y_col],
                 mode='markers', name='Flare Candidate Second',
                 marker=dict(color='#d62728', size=4)
             ))
@@ -323,6 +338,7 @@ elif section == "2. Light Curve":
         height=500
     )
     st.plotly_chart(fig, use_container_width=True)
+    st.caption(f"⚡ Full-resolution WebGL rendering ({len(plot_df):,} records loaded directly via DuckDB partition pruning).")
 
     # -------------------------------------------------------------------------
     # Subsection: Hardness Ratio Trend
@@ -694,21 +710,22 @@ elif section == "8. Predictive Analysis":
             if sub_pred.empty:
                 st.info("No prediction data in selected date range.")
             else:
-                plot_pred = downsample_for_plotly(sub_pred, max_points=3000)
+                plot_pred = sub_pred  # FULL RESOLUTION (No downsampling!)
                     
                 fig_risk = make_subplots(specs=[[{"secondary_y": True}]])
                 fig_risk.add_trace(
-                    go.Scatter(x=plot_pred['utc_time'], y=plot_pred['total_counts'], name="Counts/s", line=dict(color='#1f77b4', width=0.8)),
+                    go.Scattergl(x=plot_pred['utc_time'], y=plot_pred['total_counts'], name="Counts/s", line=dict(color='#1f77b4', width=0.8)),
                     secondary_y=False
                 )
                 fig_risk.add_trace(
-                    go.Scatter(x=plot_pred['utc_time'], y=plot_pred['pred_prob'], name="Predicted Flare Risk (0-1)", line=dict(color='#d62728', width=1.5)),
+                    go.Scattergl(x=plot_pred['utc_time'], y=plot_pred['pred_prob'], name="Predicted Flare Risk (0-1)", line=dict(color='#d62728', width=1.5)),
                     secondary_y=True
                 )
                 fig_risk.update_layout(title=f"Predicted Flare Risk ({start_date} to {end_date})", hovermode="x unified", template="plotly_white")
                 fig_risk.update_yaxes(title_text="Total Counts / sec", secondary_y=False)
                 fig_risk.update_yaxes(title_text="Predicted Flare Risk Probability", range=[0, 1], secondary_y=True)
                 st.plotly_chart(fig_risk, use_container_width=True)
+                st.caption(f"⚡ Full-resolution WebGL risk timeline ({len(plot_pred):,} records loaded).")
                 
         st.markdown("---")
         st.subheader("False Alarm & Missed Event Analysis")

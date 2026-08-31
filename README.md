@@ -15,6 +15,15 @@ python extract_archives.py
 # Step 2: Batch load SDD2 FITS files into parquet & npy master datasets
 python batch_load.py
 
+# Step 2b: Convert raw master dataset to Hive-partitioned Parquet store
+python convert_to_parquet.py
+
+# Step 2c: Validate partitioned dataset & check storage stats
+python validate_dataset.py
+
+# Step 2d: Run I/O and memory benchmark diagnostic
+python benchmark_io.py
+
 # Step 3, 4, 5, 6, 7: Gap analysis, MAD flare detection & diagnostic plots
 python gap_check_and_visualize.py
 
