@@ -1,0 +1,2 @@
+total_detections,true_positives,false_positives,false_negatives,total_goes_flares,tpr_percent,far_percent,mean_lead_time_minutes,median_lead_time_minutes,min_lead_time_minutes,max_lead_time_minutes,confirmed_events
+19,14,5,11,25,56.00000000000001,26.31578947368421,-4.053755566666667,-3.3800000000000003,-10.957300016666666,2.1760333166666666,3

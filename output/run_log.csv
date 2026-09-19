@@ -1,0 +1,8 @@
+date,status,message,goes_status,goes_message
+2024-06-03,skipped,Missing SoLEXS data for 2024-06-03,not_run,
+2026-06-03,skipped,Missing HEL1OS CZT1 data for 2026-06-03,not_run,
+2026-07-04,ok,,ok,
+2026-07-05,skipped,Missing SoLEXS data for 2026-07-05,not_run,
+2026-07-06,skipped,Missing SoLEXS data for 2026-07-06,not_run,
+2026-07-09,skipped,Missing SoLEXS data for 2026-07-09,not_run,
+2026-07-10,skipped,Missing SoLEXS data for 2026-07-10,not_run,
