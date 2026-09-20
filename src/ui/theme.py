@@ -1,24 +1,25 @@
 """
 SoLEXS / Aditya-L1 Mission Control Theme & Styling
+Aerospace Scientific Design System
 Color System:
---void: #05060f
---deep-indigo: #0a0c22
---nebula-violet: #241a4a
---nebula-teal: #113238
---ion-cyan: #5fd4c9
---solar-gold: #f5a94e
---solar-flare: #ff8a3d
---hairline: rgba(150,165,210,0.14)
---text-primary: #eef0fb
---text-muted: #8891b0
---text-dim: #565f7d
+--void: #05060f;
+--deep-indigo: #0a0c22;
+--nebula-violet: #241a4a;
+--nebula-teal: #113238;
+--ion-cyan: #5fd4c9;
+--solar-gold: #f5a94e;
+--solar-flare: #ff8a3d;
+--hairline: rgba(150, 165, 210, 0.14);
+--text-primary: #eef0fb;
+--text-muted: #8891b0;
+--text-dim: #565f7d;
 """
 
 import plotly.graph_objects as go
 
 MISSION_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 :root {
     --void: #05060f;
@@ -29,22 +30,38 @@ MISSION_CSS = """
     --solar-gold: #f5a94e;
     --solar-flare: #ff8a3d;
     --hairline: rgba(150, 165, 210, 0.14);
-    --hairline-gold: rgba(245, 169, 78, 0.3);
-    --hairline-cyan: rgba(95, 212, 201, 0.3);
+    --hairline-gold: rgba(245, 169, 78, 0.45);
+    --hairline-cyan: rgba(95, 212, 201, 0.45);
     --text-primary: #eef0fb;
     --text-muted: #8891b0;
     --text-dim: #565f7d;
 }
 
-/* Global Container and Background */
+/* Global Container and Cosmic Starfield Background */
 .stApp {
-    background-color: #05060f !important;
+    background-color: var(--void) !important;
     background-image: 
-        radial-gradient(ellipse at 90% 5%, rgba(245, 169, 78, 0.05) 0%, transparent 45%),
-        radial-gradient(ellipse at 10% 12%, rgba(17, 50, 56, 0.18) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 98%, rgba(36, 26, 74, 0.15) 0%, transparent 55%) !important;
+        radial-gradient(1px 1px at 30px 40px, #ffffff, rgba(0,0,0,0)),
+        radial-gradient(1.5px 1.5px at 70px 110px, rgba(238,240,251,0.85), rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 150px 60px, #8891b0, rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 220px 170px, rgba(95,212,201,0.7), rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 310px 250px, #ffffff, rgba(0,0,0,0)),
+        radial-gradient(1.5px 1.5px at 380px 120px, rgba(245,169,78,0.7), rgba(0,0,0,0)),
+        radial-gradient(ellipse at 88% 8%, rgba(245, 169, 78, 0.08) 0%, transparent 48%),
+        radial-gradient(ellipse at 12% 16%, rgba(17, 50, 56, 0.22) 0%, transparent 52%),
+        radial-gradient(ellipse at 50% 96%, rgba(36, 26, 74, 0.20) 0%, transparent 55%) !important;
+    background-size: 380px 380px, 420px 420px, 320px 320px, 520px 520px, 460px 460px, 400px 400px, 100% 100%, 100% 100%, 100% 100% !important;
+    background-attachment: fixed !important;
     font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
-    color: #eef0fb !important;
+    color: var(--text-primary) !important;
+}
+
+.block-container {
+    padding-top: 0.5rem !important;
+    padding-bottom: 2rem !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+    max-width: 99% !important;
 }
 
 /* Hide default streamlit decoration header */
@@ -53,263 +70,118 @@ header[data-testid="stHeader"] {
     border-bottom: 1px solid var(--hairline) !important;
 }
 
-/* Top Mission Control Bar */
-.mission-top-bar {
+/* Breadcrumb & Navigation Bar in Module View */
+.aerospace-nav-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem 1.25rem;
-    background: #0a0c22;
+    background: linear-gradient(180deg, #090b1b 0%, #060714 100%);
     border: 1px solid var(--hairline);
-    border-radius: 2px;
-    margin-bottom: 1.25rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    border-top: 2px solid var(--ion-cyan);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.7), 0 4px 18px rgba(0,0,0,0.5);
+    padding: 0.6rem 1.2rem;
+    margin-bottom: 1rem;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
 }
 
-.mission-left {
-    display: flex;
-    flex-direction: column;
-}
-
-.mission-brand {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.15rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: #eef0fb;
-    display: flex;
+.nav-return-btn {
+    display: inline-flex;
     align-items: center;
-    gap: 0.55rem;
-}
-
-.status-dot-gold {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: var(--solar-gold);
-    box-shadow: 0 0 10px var(--solar-gold);
-    display: inline-block;
-    animation: pulse-dot 2.5s infinite ease-in-out;
-}
-
-.status-dot-cyan {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: var(--ion-cyan);
-    box-shadow: 0 0 8px var(--ion-cyan);
-    display: inline-block;
-    animation: pulse-dot 2s infinite ease-in-out;
-}
-
-@keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.45; transform: scale(0.85); }
-}
-
-.mission-sub {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--text-muted);
-    letter-spacing: 0.06em;
-    margin-top: 0.15rem;
-}
-
-.mission-right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.2rem;
-}
-
-.mission-orbit-tag {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--ion-cyan);
-    letter-spacing: 0.05em;
-}
-
-.mission-telemetry-badge {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--solar-gold);
-    background: rgba(245, 169, 78, 0.08);
+    gap: 8px;
+    background: #0d1027;
     border: 1px solid var(--hairline-gold);
-    padding: 0.2rem 0.55rem;
-    border-radius: 2px;
+    color: var(--solar-gold) !important;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 0.42rem 0.95rem;
+    cursor: pointer;
+    text-decoration: none !important;
+    transition: all 0.25s ease;
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
 }
 
-/* Mission Section Header */
+.nav-return-btn:hover {
+    background: #14193d;
+    border-color: var(--solar-gold);
+    color: #ffffff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 0 12px rgba(245, 169, 78, 0.35);
+}
+
+.nav-status-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.76rem;
+    color: var(--ion-cyan);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Section Mission Header */
 .section-mission-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
     border-bottom: 1px solid var(--hairline);
     padding-bottom: 0.5rem;
-    margin-top: 0.5rem;
-    margin-bottom: 1.25rem;
+    margin-top: 0.4rem;
+    margin-bottom: 1.2rem;
 }
 
 .section-mission-title {
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.35rem;
-    font-weight: 600;
-    color: #eef0fb;
-    letter-spacing: 0.03em;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 12px rgba(238, 240, 251, 0.2);
 }
 
 .section-mission-subtitle {
     font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     color: var(--text-muted);
-    margin-top: 0.15rem;
+    margin-top: 0.2rem;
 }
 
 .section-mission-meta {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     color: var(--text-dim);
     text-align: right;
 }
 
 .section-mission-meta span {
     color: var(--ion-cyan);
+    font-weight: 600;
 }
 
-/* Sidebar Custom Styling */
-section[data-testid="stSidebar"] {
-    background-color: #080a1c !important;
-    border-right: 1px solid var(--hairline) !important;
-}
-
-section[data-testid="stSidebar"] hr {
-    border-color: var(--hairline) !important;
-}
-
-/* Sidebar Radio Buttons -> Mission Console Navigation */
-div[data-testid="stRadio"] > div {
-    gap: 0.25rem !important;
-}
-
-div[data-testid="stRadio"] label {
-    font-family: 'IBM Plex Mono', monospace !important;
-    font-size: 0.82rem !important;
-    color: var(--text-muted) !important;
-    background: #0a0c22 !important;
-    border: 1px solid var(--hairline) !important;
-    border-left: 3px solid transparent !important;
-    border-radius: 2px !important;
-    padding: 0.55rem 0.8rem !important;
-    margin-bottom: 0.2rem !important;
-    transition: all 0.2s ease !important;
-    display: flex !important;
-    align-items: center !important;
-    cursor: pointer !important;
-}
-
-div[data-testid="stRadio"] label:hover {
-    background: #111536 !important;
-    color: #eef0fb !important;
-    border-color: var(--hairline-gold) !important;
-    border-left: 3px solid var(--solar-gold) !important;
-}
-
-div[data-testid="stRadio"] label[data-checked="true"],
-div[data-testid="stRadio"] div[aria-checked="true"] {
-    background: #12173b !important;
-    color: #eef0fb !important;
-    border-color: var(--hairline-gold) !important;
-    border-left: 3px solid var(--solar-gold) !important;
-    font-weight: 600 !important;
-    box-shadow: inset 0 0 12px rgba(245, 169, 78, 0.08) !important;
-}
-
-/* Hide default radio circle */
-div[data-testid="stRadio"] input[type="radio"] {
-    accent-color: var(--solar-gold) !important;
-}
-
-/* KPI Telemetry Strip */
-.kpi-strip {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.75rem;
-    margin-bottom: 1.25rem;
-}
-
-.kpi-card {
-    background: #0a0c22;
+/* Aerospace Machined Instrument Card */
+.aerospace-panel {
+    background: #090b1b;
     border: 1px solid var(--hairline);
-    border-radius: 2px;
-    padding: 0.75rem 1rem;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.7), inset 1px 0 0 rgba(255,255,255,0.025), 0 6px 20px rgba(0,0,0,0.5);
+    background-image: linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px);
+    background-size: 100% 4px;
+    padding: 1.2rem;
     position: relative;
-    overflow: hidden;
-    transition: border-color 0.2s ease;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
 }
 
-.kpi-card:hover {
-    border-color: var(--hairline-cyan);
-}
-
-.kpi-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 24px;
-    height: 2px;
-    background: var(--ion-cyan);
-}
-
-.kpi-value {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.45rem;
-    font-weight: 700;
-    color: #eef0fb;
-    line-height: 1.2;
-    margin-top: 0.2rem;
-}
-
-.kpi-label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-}
-
-.kpi-status {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.68rem;
-    color: var(--ion-cyan);
-    margin-top: 0.35rem;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-/* Rack Instrument Panel */
-.rack-panel {
-    background: #0a0c22;
-    border: 1px solid var(--hairline);
-    border-radius: 2px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 1rem;
-}
-
+/* Rack Header Bar */
 .rack-header {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     font-weight: 600;
     color: var(--text-muted);
-    text-transform: uppercase;
     letter-spacing: 0.08em;
-    border-bottom: 1px solid var(--hairline);
-    padding-bottom: 0.45rem;
-    margin-bottom: 0.85rem;
+    padding: 0.35rem 0.6rem;
+    background: #0a0c22;
+    border: 1px solid var(--hairline);
+    border-left: 3px solid var(--ion-cyan);
+    margin-bottom: 0.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -323,221 +195,223 @@ div[data-testid="stRadio"] input[type="radio"] {
     color: var(--ion-cyan);
 }
 
-/* Metric styling override */
+/* Metric Units */
 div[data-testid="stMetric"] {
-    background: #0a0c22 !important;
+    background: #090b1b !important;
     border: 1px solid var(--hairline) !important;
-    border-radius: 2px !important;
-    padding: 0.65rem 0.85rem !important;
+    border-top: 2px solid var(--ion-cyan) !important;
+    padding: 0.6rem 0.85rem !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.6) !important;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
 }
 
 div[data-testid="stMetricLabel"] {
     font-family: 'IBM Plex Mono', monospace !important;
     font-size: 0.72rem !important;
     color: var(--text-muted) !important;
-    text-transform: uppercase !important;
     letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
 }
 
 div[data-testid="stMetricValue"] {
     font-family: 'Space Grotesk', sans-serif !important;
-    font-size: 1.35rem !important;
+    font-size: 1.45rem !important;
     font-weight: 700 !important;
-    color: #eef0fb !important;
+    color: var(--text-primary) !important;
 }
 
-/* Dataframe styling */
+/* Streamlit Buttons Restyling */
+button[kind="primary"], .stButton > button {
+    background: linear-gradient(180deg, #101432 0%, #090b1b 100%) !important;
+    border: 1px solid var(--hairline-gold) !important;
+    color: var(--solar-gold) !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-size: 0.84rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.06em !important;
+    padding: 0.45rem 1.1rem !important;
+    border-radius: 0px !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.7) !important;
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)) !important;
+    transition: all 0.25s ease !important;
+}
+
+button[kind="primary"]:hover, .stButton > button:hover {
+    background: linear-gradient(180deg, #171d47 0%, #0d1027 100%) !important;
+    border-color: var(--solar-gold) !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 0 12px rgba(245, 169, 78, 0.4) !important;
+}
+
+/* Sidebar Custom Styling */
+section[data-testid="stSidebar"] {
+    background-color: #05060f !important;
+    border-right: 1px solid var(--hairline) !important;
+}
+
+section[data-testid="stSidebar"] hr {
+    border-color: var(--hairline) !important;
+}
+
+div[data-testid="stRadio"] > div {
+    gap: 0.25rem !important;
+}
+
+div[data-testid="stRadio"] label {
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 0.82rem !important;
+    color: var(--text-muted) !important;
+    background: #090b1b !important;
+    border: 1px solid var(--hairline) !important;
+    border-left: 3px solid transparent !important;
+    padding: 0.5rem 0.8rem !important;
+    margin-bottom: 0.15rem !important;
+    transition: all 0.2s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    cursor: pointer !important;
+}
+
+div[data-testid="stRadio"] label:hover {
+    background: #0d1027 !important;
+    color: var(--text-primary) !important;
+    border-color: var(--hairline-gold) !important;
+    border-left: 3px solid var(--solar-gold) !important;
+}
+
+/* Alert Boxes */
+.mission-alert-cyan {
+    background: rgba(17, 50, 56, 0.45);
+    border: 1px solid rgba(95, 212, 201, 0.4);
+    border-left: 3px solid var(--ion-cyan);
+    padding: 0.75rem 1rem;
+    font-size: 0.86rem;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    box-shadow: inset 0 0 10px rgba(95, 212, 201, 0.05);
+}
+
+.mission-alert-gold {
+    background: rgba(45, 28, 15, 0.45);
+    border: 1px solid rgba(245, 169, 78, 0.4);
+    border-left: 3px solid var(--solar-gold);
+    padding: 0.75rem 1rem;
+    font-size: 0.86rem;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    box-shadow: inset 0 0 10px rgba(245, 169, 78, 0.05);
+}
+
+/* Continuity Progress Bar */
+.continuity-container {
+    background: #090b1b;
+    border: 1px solid var(--hairline);
+    padding: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.continuity-bar {
+    width: 100%;
+    height: 14px;
+    background: #05060f;
+    border: 1px solid var(--hairline);
+    margin: 8px 0;
+    display: flex;
+    overflow: hidden;
+}
+
+.seg-active {
+    background: linear-gradient(90deg, #113238 0%, #5fd4c9 100%);
+    height: 100%;
+}
+
+.seg-gap {
+    background: #ff4d4d;
+    height: 100%;
+}
+
+/* Table and DataFrame Styling */
 div[data-testid="stDataFrame"] {
     border: 1px solid var(--hairline) !important;
-    border-radius: 2px !important;
-    background: #0a0c22 !important;
+    background: #090b1b !important;
 }
 
-/* Tabs styling */
-div[data-testid="stTabs"] button[role="tab"] {
-    font-family: 'IBM Plex Mono', monospace !important;
-    font-size: 0.8rem !important;
-    color: var(--text-muted) !important;
-    background: transparent !important;
-    border-bottom: 2px solid transparent !important;
-    padding: 0.5rem 1rem !important;
-}
-
-div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-    color: var(--solar-gold) !important;
-    border-bottom: 2px solid var(--solar-gold) !important;
-    font-weight: 600 !important;
-}
-
-div[data-testid="stTabs"] button[role="tab"]:hover {
-    color: #eef0fb !important;
-}
-
-/* Buttons */
-.stButton > button {
-    font-family: 'IBM Plex Mono', monospace !important;
-    font-size: 0.8rem !important;
-    background: #0e1338 !important;
-    color: #eef0fb !important;
-    border: 1px solid var(--hairline) !important;
-    border-radius: 2px !important;
-    padding: 0.45rem 0.95rem !important;
-    transition: all 0.2s ease !important;
-}
-
-.stButton > button:hover {
-    border-color: var(--ion-cyan) !important;
-    color: var(--ion-cyan) !important;
-    box-shadow: 0 0 10px rgba(95, 212, 201, 0.2) !important;
-}
-
-.stDownloadButton > button {
-    font-family: 'IBM Plex Mono', monospace !important;
-    font-size: 0.8rem !important;
-    background: #0a0c22 !important;
-    color: var(--ion-cyan) !important;
-    border: 1px solid var(--hairline-cyan) !important;
-    border-radius: 2px !important;
-}
-
-/* Inputs & Selectboxes */
-div[data-testid="stSelectbox"] > div,
-div[data-testid="stDateInput"] > div,
-div[data-testid="stTextInput"] > div,
-div[data-testid="stNumberInput"] > div {
-    background: #0a0c22 !important;
-    border: 1px solid var(--hairline) !important;
-    border-radius: 2px !important;
-    font-family: 'IBM Plex Mono', monospace !important;
-    color: #eef0fb !important;
-}
-
-/* Caveat / Diagnostic Alert */
-.mission-alert {
-    background: rgba(36, 26, 74, 0.4);
-    border: 1px solid var(--hairline);
-    border-left: 3px solid var(--solar-flare);
-    padding: 0.65rem 0.95rem;
-    border-radius: 2px;
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 0.82rem;
-    color: #ffd5b5;
-    margin-bottom: 1rem;
-}
-
-.mission-alert-cyan {
-    background: rgba(17, 50, 56, 0.4);
-    border: 1px solid var(--hairline);
-    border-left: 3px solid var(--ion-cyan);
-    padding: 0.65rem 0.95rem;
-    border-radius: 2px;
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 0.82rem;
-    color: #bdf5f0;
-    margin-bottom: 1rem;
-}
-
-/* Flare Event Tag */
-.badge-flare {
-    display: inline-block;
-    padding: 0.15rem 0.45rem;
-    border-radius: 2px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.7rem;
-    font-weight: 600;
-}
-.badge-x { background: rgba(255, 60, 60, 0.2); border: 1px solid #ff4d4d; color: #ff8080; }
-.badge-m { background: rgba(245, 169, 78, 0.2); border: 1px solid var(--solar-gold); color: var(--solar-gold); }
-.badge-c { background: rgba(95, 212, 201, 0.2); border: 1px solid var(--ion-cyan); color: var(--ion-cyan); }
-.badge-b { background: rgba(136, 145, 176, 0.2); border: 1px solid var(--text-muted); color: var(--text-primary); }
-
-/* Compact event row */
-.event-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.45rem 0.75rem;
-    border-bottom: 1px solid var(--hairline);
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.78rem;
-}
-.event-row:hover {
-    background: rgba(245, 169, 78, 0.05);
-}
-
-/* Telemetry Continuity Bar */
-.continuity-container {
-    background: #0a0c22;
-    border: 1px solid var(--hairline);
-    padding: 0.75rem 1rem;
-    border-radius: 2px;
-    margin-bottom: 1rem;
-}
-.continuity-bar {
-    display: flex;
-    height: 16px;
-    border-radius: 2px;
-    overflow: hidden;
-    margin: 0.5rem 0;
-    background: #111536;
-    border: 1px solid var(--hairline);
-}
-.seg-active {
-    background: var(--ion-cyan);
-    height: 100%;
-}
-.seg-gap {
-    background: #ff5252;
-    height: 100%;
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .section-mission-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    .section-mission-meta {
+        text-align: left;
+    }
 }
 </style>
 """
 
 def apply_mission_control_theme(fig, is_heatmap=False):
     """
-    Applies the SoLEXS / Aditya-L1 scientific instrument console theme to any Plotly figure.
+    Applies strict aerospace scientific theme to any Plotly figure:
+    Dark void background, hairline gridlines, Space Grotesk / IBM Plex Mono typography,
+    subtle cyan / solar gold accents.
     """
+    font_spec = dict(
+        family="IBM Plex Sans, -apple-system, BlinkMacSystemFont, sans-serif",
+        size=11,
+        color="#eef0fb"
+    )
+    title_font_spec = dict(
+        family="Space Grotesk, sans-serif",
+        size=14,
+        color="#eef0fb"
+    )
+    
     fig.update_layout(
         template="plotly_dark",
-        paper_bgcolor="rgba(0, 0, 0, 0)",
-        plot_bgcolor="#0a0c22",
-        font=dict(
-            family="IBM Plex Mono, monospace",
-            size=11,
-            color="#8891b0"
-        ),
-        margin=dict(l=40, r=25, t=35, b=35),
-        xaxis=dict(
-            gridcolor="rgba(150, 165, 210, 0.08)",
-            linecolor="rgba(150, 165, 210, 0.2)",
-            zerolinecolor="rgba(150, 165, 210, 0.15)",
-            tickfont=dict(family="IBM Plex Mono, monospace", size=10, color="#8891b0"),
-            title_font=dict(family="IBM Plex Mono, monospace", size=11, color="#eef0fb"),
-        ),
-        yaxis=dict(
-            gridcolor="rgba(150, 165, 210, 0.08)",
-            linecolor="rgba(150, 165, 210, 0.2)",
-            zerolinecolor="rgba(150, 165, 210, 0.15)",
-            tickfont=dict(family="IBM Plex Mono, monospace", size=10, color="#8891b0"),
-            title_font=dict(family="IBM Plex Mono, monospace", size=11, color="#eef0fb"),
-        ),
+        paper_bgcolor="rgba(5, 6, 15, 0)",
+        plot_bgcolor="#080a1d" if not is_heatmap else "rgba(5, 6, 15, 0.85)",
+        font=font_spec,
+        title_font=title_font_spec,
         hoverlabel=dict(
             bgcolor="#0a0c22",
-            bordercolor="#5fd4c9",
-            font=dict(family="IBM Plex Mono, monospace", size=11, color="#eef0fb")
+            bordercolor="rgba(95, 212, 201, 0.6)",
+            font=dict(family="IBM Plex Mono", size=11, color="#eef0fb")
         ),
-        legend=dict(
-            bgcolor="rgba(10, 12, 34, 0.8)",
-            bordercolor="rgba(150, 165, 210, 0.2)",
-            borderwidth=1,
-            font=dict(family="IBM Plex Mono, monospace", size=10, color="#eef0fb")
+        xaxis=dict(
+            gridcolor="rgba(150, 165, 210, 0.12)",
+            gridwidth=0.8,
+            zerolinecolor="rgba(150, 165, 210, 0.2)",
+            tickfont=dict(family="IBM Plex Mono", size=10, color="#8891b0"),
+            title_font=dict(family="Space Grotesk", size=11, color="#eef0fb"),
+            showline=True,
+            linecolor="rgba(150, 165, 210, 0.25)",
+            mirror=True
+        ),
+        yaxis=dict(
+            gridcolor="rgba(150, 165, 210, 0.12)",
+            gridwidth=0.8,
+            zerolinecolor="rgba(150, 165, 210, 0.2)",
+            tickfont=dict(family="IBM Plex Mono", size=10, color="#8891b0"),
+            title_font=dict(family="Space Grotesk", size=11, color="#eef0fb"),
+            showline=True,
+            linecolor="rgba(150, 165, 210, 0.25)",
+            mirror=True
         )
     )
-    if is_heatmap:
+    
+    # Check for secondary y-axis
+    if hasattr(fig, 'layout') and 'yaxis2' in fig.layout:
         fig.update_layout(
-            coloraxis_colorbar=dict(
-                tickfont=dict(family="IBM Plex Mono, monospace", size=10, color="#8891b0"),
-                title_font=dict(family="IBM Plex Mono, monospace", size=11, color="#eef0fb"),
+            yaxis2=dict(
+                gridcolor="rgba(150, 165, 210, 0.08)",
+                tickfont=dict(family="IBM Plex Mono", size=10, color="#f5a94e"),
+                title_font=dict(family="Space Grotesk", size=11, color="#f5a94e"),
+                showline=True,
+                linecolor="rgba(245, 169, 78, 0.35)",
+                mirror=True
             )
         )
+
     return fig
